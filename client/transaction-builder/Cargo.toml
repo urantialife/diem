@@ -12,7 +12,7 @@ edition = "2018"
 [dependencies]
 bcs = "0.1.2"
 once_cell = "1.7.2"
-serde = { version = "1.0.124", features = ["derive"] }
+serde = { version = "1.0.131", features = ["derive"] }
 
 move-core-types = { path = "../../language/move-core/types", version = "0.0.1" }
 diem-types = { path = "../../types", version = "0.0.1" }
