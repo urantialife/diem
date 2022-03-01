@@ -10,7 +10,7 @@ jobs:
     name: (hyperjump) request-review
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: request review
         uses: diem/actions/hyperjump-request-review@faa14430e68d54a269628f385e69a207e4e413d5
         with:

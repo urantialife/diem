@@ -21,7 +21,7 @@ jobs:
     env:
       MESSAGE_PAYLOAD_FILE: /tmp/message
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: ${{ matrix.target-branch }}
       - uses: ./.github/actions/build-setup
@@ -47,7 +47,7 @@ jobs:
       CODECOV_OUTPUT: codecov
       MESSAGE_PAYLOAD_FILE: /tmp/message
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/build-setup
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -92,7 +92,7 @@ jobs:
       SAS: ""
       CONFIG: .github/workflows/transaction-replay.toml
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: ./.github/actions/build-setup
       - name: install azcopy
         run: |
@@ -113,7 +113,7 @@ jobs:
     env:
       TAG: github-1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: sign in to DockerHub; install image signing cert
         uses: ./.github/actions/dockerhub_login
         with:

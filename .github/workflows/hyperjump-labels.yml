@@ -10,7 +10,7 @@ jobs:
     name: (hyperjump) labels
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: labels
         uses: diem/actions/hyperjump-labels@faa14430e68d54a269628f385e69a207e4e413d5
         with:

@@ -20,7 +20,7 @@ jobs:
     env:
       DOCKERHUB_ORG: diem
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           # This ensures that the tip of the PR is checked out instead of the merge between the base ref and the tip
           # On `push` this value will be empty and will "do-the-right-thing"

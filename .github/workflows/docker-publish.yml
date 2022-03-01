@@ -11,7 +11,7 @@ jobs:
     env:
       TAG: github-1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0 #get all the history!!!
       - id: changes
