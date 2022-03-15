@@ -17,7 +17,7 @@ structopt = "0.3.21"
 itertools = "0.10.0"
 hex = "0.4.3"
 getrandom = "0.2.2"
-crossbeam-channel = "0.5.0"
+crossbeam-channel = "0.5.3"
 
 bytecode-verifier = { path = "../../bytecode-verifier" }
 diem-config = { path = "../../../config" }
