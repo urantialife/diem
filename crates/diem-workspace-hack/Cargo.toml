@@ -35,7 +35,7 @@ indexmap = { version = "1.7.0", default-features = false, features = ["std"] }
 itertools = { version = "0.10.1", features = ["use_alloc", "use_std"] }
 libc = { version = "0.2.112", features = ["std"] }
 log = { version = "0.4.14", default-features = false, features = ["serde", "std"] }
-memchr = { version = "2.4.0", features = ["std", "use_std"] }
+memchr = { version = "2.5.0", features = ["std", "use_std"] }
 num-integer = { version = "0.1.44", default-features = false, features = ["i128", "std"] }
 num-traits = { version = "0.2.14", features = ["i128", "std"] }
 plotters = { version = "0.3.0", default-features = false, features = ["area_series", "evcxr", "histogram", "line_series", "plotters-svg", "svg_backend"] }
@@ -83,7 +83,7 @@ indexmap = { version = "1.7.0", default-features = false, features = ["std"] }
 itertools = { version = "0.10.1", features = ["use_alloc", "use_std"] }
 libc = { version = "0.2.112", features = ["std"] }
 log = { version = "0.4.14", default-features = false, features = ["serde", "std"] }
-memchr = { version = "2.4.0", features = ["std", "use_std"] }
+memchr = { version = "2.5.0", features = ["std", "use_std"] }
 num-integer = { version = "0.1.44", default-features = false, features = ["i128", "std"] }
 num-traits = { version = "0.2.14", features = ["i128", "std"] }
 plotters = { version = "0.3.0", default-features = false, features = ["area_series", "evcxr", "histogram", "line_series", "plotters-svg", "svg_backend"] }
