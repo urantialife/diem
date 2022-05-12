@@ -1,6 +1,6 @@
 const path = require('path');
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   return {
     name: 'custom-webpack-plugin',
     configureWebpack(config, isServer, utils) {
@@ -10,20 +10,26 @@ module.exports = function(context, options) {
           alias: {
             CSS: path.resolve(__dirname, '../../src/css'),
             components: path.resolve(__dirname, '../../src/components'),
-            'diem-cli': path.resolve(__dirname, '../../diem-cli/src'),
+            'react-axe': require.resolve("@axe-core/react"),
             'diem-docusaurus-components': path.resolve(
               __dirname,
-              '../../node_modules/@libra-opensource/diem-docusaurus-components',
+              '../../src/@libra-opensource/diem-docusaurus-components',
             ),
             docs: path.resolve(__dirname, '../../docs'),
             img: path.resolve(__dirname, '../../static/img'),
             react: path.resolve('./node_modules/react'),
             src: path.resolve(__dirname, '../../src'),
-          }
+          },
+          fallback: {
+            fs: false,
+            http:   false, // require.resolve("stream-http"),
+            https:  false, // require.resolve("https-browserify"),
+            path:   false, // require.resolve("path-browserify"),
+            crypto: false, // require.resolve("crypto-browserify"),
+            stream: false, // require.resolve("stream-browserify"),
+          },
         },
-        node: {
-          fs: 'empty',
-        },
+        node: {},
       };
     },
   };

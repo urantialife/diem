@@ -7,7 +7,7 @@ use determinator::rules::DeterminatorRules;
 use guppy::graph::summaries::CargoOptionsSummary;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -121,12 +121,16 @@ pub struct WorkspaceConfig {
     pub enforced_attributes: EnforcedAttributesConfig,
     /// Banned dependencies
     pub banned_deps: BannedDepsConfig,
+    /// Direct dep duplicate lint config
+    pub direct_dep_dups: DirectDepDupsConfig,
     /// Overlay config in this workspace
     pub overlay: OverlayConfig,
     /// Test-only config in this workspace
     pub test_only: TestOnlyConfig,
     /// Exceptions to whitespace linters
     pub whitespace_exceptions: Vec<String>,
+    /// Move to Diem dependencies
+    pub move_to_diem_deps: MoveToDiemDepsConfig,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -145,6 +149,18 @@ pub struct BannedDepsConfig {
     pub direct: HashMap<String, String>,
     /// Banned dependencies in the default build set
     pub default_build: HashMap<String, String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct DirectDepDupsConfig {
+    pub allow: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct MoveToDiemDepsConfig {
+    pub diem_crates_in_language: HashSet<String>,
+    pub exclude: HashSet<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -175,8 +191,6 @@ pub struct Fix {}
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct CargoConfig {
-    pub toolchain: String,
-    pub flags: Option<String>,
     pub sccache: Option<Sccache>,
 }
 

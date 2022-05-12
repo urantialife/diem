@@ -1,8 +1,8 @@
 ---
-id: code-of-conduct
-title: Contributor Covenant Code of Conduct
+title: "Contributor Covenant Code of Conduct"
+slug: "code-of-conduct"
+hidden: false
 ---
-
 ## Our Pledge
 
 In the interest of fostering an open and welcoming environment, we as

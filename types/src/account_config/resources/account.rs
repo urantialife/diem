@@ -3,11 +3,16 @@
 
 use crate::{
     account_config::{
-        constants::ACCOUNT_MODULE_NAME, KeyRotationCapabilityResource, WithdrawCapabilityResource,
+        constants::DIEM_ACCOUNT_MODULE_IDENTIFIER, KeyRotationCapabilityResource,
+        WithdrawCapabilityResource,
     },
     event::EventHandle,
 };
-use move_core_types::move_resource::MoveResource;
+use move_core_types::{
+    account_address::AccountAddress,
+    identifier::IdentStr,
+    move_resource::{MoveResource, MoveStructType},
+};
 #[cfg(any(test, feature = "fuzzing"))]
 use proptest_derive::Arbitrary;
 use serde::{Deserialize, Serialize};
@@ -16,7 +21,7 @@ use serde::{Deserialize, Serialize};
 /// This is not how the Account is represented in the VM but it's a convenient representation.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "fuzzing"), derive(Arbitrary))]
-pub struct AccountResource {
+pub struct DiemAccountResource {
     authentication_key: Vec<u8>,
     withdrawal_capability: Option<WithdrawCapabilityResource>,
     key_rotation_capability: Option<KeyRotationCapabilityResource>,
@@ -25,7 +30,7 @@ pub struct AccountResource {
     sequence_number: u64,
 }
 
-impl AccountResource {
+impl DiemAccountResource {
     /// Constructs an Account resource.
     pub fn new(
         sequence_number: u64,
@@ -35,13 +40,13 @@ impl AccountResource {
         sent_events: EventHandle,
         received_events: EventHandle,
     ) -> Self {
-        AccountResource {
-            sequence_number,
+        DiemAccountResource {
+            authentication_key,
             withdrawal_capability,
             key_rotation_capability,
-            authentication_key,
-            sent_events,
             received_events,
+            sent_events,
+            sequence_number,
         }
     }
 
@@ -74,9 +79,15 @@ impl AccountResource {
     pub fn received_events(&self) -> &EventHandle {
         &self.received_events
     }
+
+    pub fn address(&self) -> AccountAddress {
+        self.sent_events().key().get_creator_address()
+    }
 }
 
-impl MoveResource for AccountResource {
-    const MODULE_NAME: &'static str = ACCOUNT_MODULE_NAME;
-    const STRUCT_NAME: &'static str = ACCOUNT_MODULE_NAME;
+impl MoveStructType for DiemAccountResource {
+    const MODULE_NAME: &'static IdentStr = DIEM_ACCOUNT_MODULE_IDENTIFIER;
+    const STRUCT_NAME: &'static IdentStr = DIEM_ACCOUNT_MODULE_IDENTIFIER;
 }
+
+impl MoveResource for DiemAccountResource {}

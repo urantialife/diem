@@ -8,7 +8,11 @@ use diem_types::{transaction::Transaction, waypoint::Waypoint};
 use diem_vm::DiemVM;
 use diemdb::DiemDB;
 use executor::db_bootstrapper::calculate_genesis;
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
 use storage_interface::DbReaderWriter;
 use structopt::StructOpt;
 
@@ -29,6 +33,9 @@ struct Opt {
 
     #[structopt(long, requires("waypoint-to-verify"))]
     commit: bool,
+
+    #[structopt(long)]
+    account_count_migration: bool,
 }
 
 fn main() -> Result<()> {
@@ -49,6 +56,7 @@ fn main() -> Result<()> {
             false,
             None, /* pruner */
             RocksdbConfig::default(),
+            opt.account_count_migration,
         )
     } else {
         // When not committing, we open the DB as secondary so the tool is usable along side a
@@ -103,7 +111,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn load_genesis_txn(path: &PathBuf) -> Result<Transaction> {
+fn load_genesis_txn(path: &Path) -> Result<Transaction> {
     let mut file = File::open(&path)?;
     let mut buffer = vec![];
     file.read_to_end(&mut buffer)?;

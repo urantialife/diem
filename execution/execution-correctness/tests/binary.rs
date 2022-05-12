@@ -11,7 +11,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 const BINARY: &str = env!("CARGO_BIN_EXE_execution-correctness");
 #[test]
 fn test_rest() {
-    let (mut config, _handle, _db) = executor_test_helpers::start_storage_service();
+    let (mut config, _handle, db_rw) = executor_test_helpers::start_storage_service();
     let server_port = utils::get_available_port();
     let server_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), server_port);
     config.execution.service =
@@ -27,11 +27,20 @@ fn test_rest() {
         .stdin(std::process::Stdio::inherit())
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit());
-    command.spawn().unwrap();
+    let mut child = command.spawn().unwrap();
 
     // Run a command as a client to verify the service is running
-    ExecutionCorrectnessManager::new(&config)
+    let res = ExecutionCorrectnessManager::new(&config, db_rw)
         .client()
-        .reset()
-        .unwrap();
+        .reset();
+
+    // Ensure the safety-rules subprocess is killed whether the test passes or fails.
+    // Not doing this would result in a zombie process.
+    child
+        .kill()
+        .expect("could not kill execution-correctness process");
+    child
+        .wait()
+        .expect("could not wait on execution-correctness process");
+    res.unwrap();
 }

@@ -14,11 +14,12 @@
 //! ├── tests.rs          # tests
 
 #[macro_use]
-mod util;
+pub mod util;
 
 mod counters;
+pub mod data;
 mod methods;
-mod runtime;
+pub mod runtime;
 
 pub use diem_json_rpc_types::{errors, response, views};
 
@@ -28,6 +29,6 @@ pub use runtime::{bootstrap, bootstrap_from_config};
 /// Fuzzer for JSON RPC service
 pub mod fuzzing;
 #[cfg(any(test, feature = "fuzzing"))]
-mod tests;
+pub(crate) mod tests;
 #[cfg(any(test, feature = "fuzzing"))]
-pub use tests::test_bootstrap;
+pub use tests::utils::test_bootstrap;

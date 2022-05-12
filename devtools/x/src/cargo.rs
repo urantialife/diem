@@ -4,14 +4,16 @@
 use crate::{
     cargo::selected_package::{SelectedInclude, SelectedPackages},
     config::CargoConfig,
-    utils::{apply_sccache_if_possible, project_root},
+    utils::{
+        apply_sccache_if_possible, log_sccache_stats, project_root, sccache_should_run,
+        stop_sccache_server,
+    },
     Result,
 };
 use anyhow::anyhow;
 use indexmap::map::IndexMap;
 use log::{info, warn};
 use std::{
-    env,
     ffi::{OsStr, OsString},
     path::Path,
     process::{Command, Output, Stdio},
@@ -21,64 +23,29 @@ use std::{
 pub mod build_args;
 pub mod selected_package;
 
-const RUST_TOOLCHAIN_VERSION: &str = include_str!("../../../rust-toolchain");
-const RUSTUP_TOOLCHAIN: &str = "RUSTUP_TOOLCHAIN";
-const CARGO: &str = "CARGO";
 const SECRET_ENVS: &[&str] = &["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"];
 pub struct Cargo {
     inner: Command,
     pass_through_args: Vec<OsString>,
     env_additions: IndexMap<OsString, Option<OsString>>,
+    on_close: fn(),
+}
+
+impl Drop for Cargo {
+    fn drop(&mut self) {
+        (self.on_close)();
+    }
 }
 
 impl Cargo {
     pub fn new<S: AsRef<OsStr>>(
         cargo_config: &CargoConfig,
         command: S,
-        attempt_sccache: bool,
+        skip_sccache: bool,
     ) -> Self {
-        // run rustup to find correct toolchain
-        let output = Command::new("rustup")
-            .arg("which")
-            .arg("--toolchain")
-            .arg(&cargo_config.toolchain)
-            .arg("cargo")
-            .output()
-            .expect("failed to execute rustup which");
-        let (cargo_binary, cargo_flags) = if output.status.success() {
-            (
-                String::from_utf8(output.stdout)
-                    .expect("error parsing rustup which output into utf8"),
-                &cargo_config.flags,
-            )
-        } else {
-            println!(
-                "WARN: Rust toolchain {} not installed; falling back to legacy Cargo resolver.",
-                cargo_config.toolchain,
-            );
-            println!(
-                "WARN: Run `rustup toolchain install {}` to use the new resolver.",
-                cargo_config.toolchain,
-            );
-            ("cargo".to_string(), &None)
-        };
-
-        let mut inner = Command::new(str::trim(&cargo_binary));
-        if let Some(flags) = &cargo_flags {
-            inner.arg(&flags);
-        }
-
-        // The environment is inherited for child processes so we only need to set RUSTUP_TOOLCHAIN
-        // if it isn't already present in the environment
-        if env::var_os(RUSTUP_TOOLCHAIN).is_none() {
-            inner.env(RUSTUP_TOOLCHAIN, RUST_TOOLCHAIN_VERSION.trim());
-        }
-
-        // Set the `CARGO` envvar with the path to the cargo binary being used
-        inner.env(CARGO, cargo_binary.trim());
-
+        let mut inner = Command::new("cargo");
         //sccache apply
-        let envs: IndexMap<OsString, Option<OsString>> = if attempt_sccache {
+        let envs: IndexMap<OsString, Option<OsString>> = if !skip_sccache {
             let result = apply_sccache_if_possible(cargo_config);
             match result {
                 Ok(env) => env
@@ -103,11 +70,21 @@ impl Cargo {
             IndexMap::new()
         };
 
+        let on_drop = if !skip_sccache && sccache_should_run(cargo_config, false) {
+            || {
+                log_sccache_stats();
+                stop_sccache_server();
+            }
+        } else {
+            || ()
+        };
+
         inner.arg(command);
         Self {
             inner,
             pass_through_args: Vec::new(),
             env_additions: envs,
+            on_close: on_drop,
         }
     }
 
@@ -190,11 +167,7 @@ impl Cargo {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
-        let converted_val = if let Some(s) = val {
-            Some(s.as_ref().to_owned())
-        } else {
-            None
-        };
+        let converted_val = val.map(|s| s.as_ref().to_owned());
 
         self.env_additions
             .insert(key.as_ref().to_owned(), converted_val);
@@ -207,12 +180,10 @@ impl Cargo {
     }
 
     /// Runs this command, capturing the standard output into a `Vec<u8>`.
-    /// No logging/timing will be displayed as the result of this call from x.
-    #[allow(dead_code)]
+    /// Standard error is forwarded.
     pub fn run_with_output(&mut self) -> Result<Vec<u8>> {
         self.inner.stderr(Stdio::inherit());
-        // Since system out hijacked don't log for this command
-        self.do_run(false).map(|o| o.stdout)
+        self.do_run(true).map(|o| o.stdout)
     }
 
     /// Internal run command, where the magic happens.
@@ -304,12 +275,14 @@ pub enum CargoCommand<'a> {
         direct_args: &'a [OsString],
         args: &'a [OsString],
         env: &'a [(&'a str, Option<&'a str>)],
+        skip_sccache: bool,
     },
     Build {
         cargo_config: &'a CargoConfig,
         direct_args: &'a [OsString],
         args: &'a [OsString],
         env: &'a [(&'a str, Option<&'a str>)],
+        skip_sccache: bool,
     },
 }
 
@@ -325,6 +298,14 @@ impl<'a> CargoCommand<'a> {
         }
     }
 
+    pub fn skip_sccache(&self) -> bool {
+        match self {
+            CargoCommand::Build { skip_sccache, .. } => *skip_sccache,
+            CargoCommand::Test { skip_sccache, .. } => *skip_sccache,
+            _ => false,
+        }
+    }
+
     pub fn run_on_packages(&self, packages: &SelectedPackages<'_>) -> Result<()> {
         // Early return if we have no packages to run.
         if !packages.should_invoke() {
@@ -332,14 +313,33 @@ impl<'a> CargoCommand<'a> {
             return Ok(());
         }
 
-        let mut cargo = Cargo::new(self.cargo_config(), self.as_str(), true);
+        let mut cargo = self.prepare_cargo(packages);
+        cargo.run()
+    }
+
+    /// Runs this command on the selected packages, returning the standard output as a bytestring.
+    pub fn run_capture_stdout(&self, packages: &SelectedPackages<'_>) -> Result<Vec<u8>> {
+        // Early return if we have no packages to run.
+        if !packages.should_invoke() {
+            info!("no packages to {}: exiting early", self.as_str());
+            Ok(vec![])
+        } else {
+            let mut cargo = self.prepare_cargo(packages);
+            cargo.args(&["--message-format", "json-render-diagnostics"]);
+            Ok(cargo.run_with_output()?)
+        }
+    }
+
+    fn prepare_cargo(&self, packages: &SelectedPackages<'_>) -> Cargo {
+        let mut cargo = Cargo::new(self.cargo_config(), self.as_str(), self.skip_sccache());
         cargo
             .current_dir(project_root())
             .args(self.direct_args())
             .packages(packages)
             .pass_through(self.pass_through_args())
-            .envs(self.get_extra_env().to_owned())
-            .run()
+            .envs(self.get_extra_env().to_owned());
+
+        cargo
     }
 
     pub fn as_str(&self) -> &'static str {

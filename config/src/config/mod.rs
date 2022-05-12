@@ -1,6 +1,9 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::network_id::NetworkId;
+use diem_secure_storage::{KVStorage, Storage};
+use diem_types::{waypoint::Waypoint, PeerId};
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -25,8 +28,6 @@ mod key_manager_config;
 pub use key_manager_config::*;
 mod logger_config;
 pub use logger_config::*;
-mod metrics_config;
-pub use metrics_config::*;
 mod mempool_config;
 pub use mempool_config::*;
 mod network_config;
@@ -41,20 +42,20 @@ mod storage_config;
 pub use storage_config::*;
 mod safety_rules_config;
 pub use safety_rules_config::*;
-mod upstream_config;
-pub use upstream_config::*;
 mod test_config;
-use crate::network_id::NetworkId;
-use diem_secure_storage::{KVStorage, Storage};
-use diem_types::waypoint::Waypoint;
 pub use test_config::*;
+mod api_config;
+pub use api_config::*;
+
+/// Represents a deprecated config that provides no field verification.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct DeprecatedConfig {}
 
 /// Config pulls in configuration information from the config file.
 /// This is used to set up the nodes and configure various parameters.
 /// The config file is broken up into sections for each module
 /// so that only that module can be passed around
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct NodeConfig {
     #[serde(default)]
     pub base: BaseConfig,
@@ -69,11 +70,13 @@ pub struct NodeConfig {
     #[serde(default)]
     pub logger: LoggerConfig,
     #[serde(default)]
-    pub metrics: MetricsConfig,
-    #[serde(default)]
     pub mempool: MempoolConfig,
     #[serde(default)]
+    pub metrics: DeprecatedConfig,
+    #[serde(default)]
     pub json_rpc: JsonRpcConfig,
+    #[serde(default)]
+    pub api: ApiConfig,
     #[serde(default)]
     pub state_sync: StateSyncConfig,
     #[serde(default)]
@@ -81,15 +84,13 @@ pub struct NodeConfig {
     #[serde(default)]
     pub test: Option<TestConfig>,
     #[serde(default)]
-    pub upstream: UpstreamConfig,
-    #[serde(default)]
     pub validator_network: Option<NetworkConfig>,
     #[serde(default)]
     pub failpoints: Option<HashMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(default, deny_unknown_fields)]
+#[serde(default)]
 pub struct BaseConfig {
     data_dir: PathBuf,
     pub role: RoleType,
@@ -131,7 +132,7 @@ impl WaypointConfig {
                 let content = fs::read_to_string(path)
                     .unwrap_or_else(|_| panic!("Failed to read waypoint file {}", path.display()));
                 Some(
-                    Waypoint::from_str(&content.trim())
+                    Waypoint::from_str(content.trim())
                         .unwrap_or_else(|_| panic!("Failed to parse waypoint: {}", content.trim())),
                 )
             }
@@ -211,7 +212,7 @@ impl fmt::Display for RoleType {
 pub struct ParseRoleError(String);
 
 impl NodeConfig {
-    pub fn data_dir(&self) -> &PathBuf {
+    pub fn data_dir(&self) -> &Path {
         &self.base.data_dir
     }
 
@@ -219,7 +220,6 @@ impl NodeConfig {
         self.base.data_dir = data_dir.clone();
         self.consensus.set_data_dir(data_dir.clone());
         self.execution.set_data_dir(data_dir.clone());
-        self.metrics.set_data_dir(data_dir.clone());
         self.storage.set_data_dir(data_dir);
     }
 
@@ -233,8 +233,19 @@ impl NodeConfig {
         config.execution.load(&input_dir)?;
 
         let mut config = config.validate_network_configs()?;
-        config.set_data_dir(config.data_dir().clone());
+        config.set_data_dir(config.data_dir().to_path_buf());
         Ok(config)
+    }
+
+    pub fn peer_id(&self) -> Option<PeerId> {
+        match self.base.role {
+            RoleType::Validator => self.validator_network.as_ref().map(NetworkConfig::peer_id),
+            RoleType::FullNode => self
+                .full_node_networks
+                .iter()
+                .find(|config| config.network_id == NetworkId::Public)
+                .map(NetworkConfig::peer_id),
+        }
     }
 
     /// Checks `NetworkConfig` setups so that they exist on proper networks
@@ -255,18 +266,18 @@ impl NodeConfig {
         let mut network_ids = HashSet::new();
         if let Some(network) = &mut self.validator_network {
             network.load_validator_network()?;
-            network_ids.insert(network.network_id.clone());
+            network_ids.insert(network.network_id);
         }
         for network in &mut self.full_node_networks {
             network.load_fullnode_network()?;
 
             // Check a validator network is not included in a list of full-node networks
-            let network_id = &network.network_id;
+            let network_id = network.network_id;
             invariant(
                 !matches!(network_id, NetworkId::Validator),
                 "Included a validator network in full_node_networks".into(),
             )?;
-            network_ids.insert(network_id.clone());
+            network_ids.insert(network_id);
         }
         Ok(self)
     }
@@ -282,6 +293,7 @@ impl NodeConfig {
     pub fn randomize_ports(&mut self) {
         self.debug_interface.randomize_ports();
         self.json_rpc.randomize_ports();
+        self.api.randomize_ports();
         self.storage.randomize_ports();
 
         if let Some(network) = self.validator_network.as_mut() {
@@ -385,7 +397,7 @@ pub trait PersistableConfig: Serialize + DeserializeOwned {
     }
 
     fn parse(serialized: &str) -> Result<Self, Error> {
-        serde_yaml::from_str(&serialized).map_err(|e| Error::Yaml("config".to_string(), e))
+        serde_yaml::from_str(serialized).map_err(|e| Error::Yaml("config".to_string(), e))
     }
 }
 
@@ -414,11 +426,11 @@ impl RootPath {
     }
 
     /// This adds a full path when loading / storing if one is not specified
-    pub fn full_path(&self, file_path: &PathBuf) -> PathBuf {
+    pub fn full_path(&self, file_path: &Path) -> PathBuf {
         if file_path.is_relative() {
             self.root_path.join(file_path)
         } else {
-            file_path.clone()
+            file_path.to_path_buf()
         }
     }
 }
@@ -460,7 +472,7 @@ mod test {
         NodeConfig::parse(docker_public_full_node).unwrap();
 
         let contents = std::include_str!("test_data/safety_rules.yaml");
-        SafetyRulesConfig::parse(&contents)
+        SafetyRulesConfig::parse(contents)
             .unwrap_or_else(|e| panic!("Error in safety_rules.yaml: {}", e));
     }
 }

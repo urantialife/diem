@@ -153,21 +153,12 @@ function prune_repo {
 }
 
 prune_repo "diem/client"
-prune_repo "diem/cluster_test"
 prune_repo "diem/init"
 prune_repo "diem/faucet"
 prune_repo "diem/tools"
 prune_repo "diem/validator"
 prune_repo "diem/validator_tcb"
-
-# Remove when conversion is complete.
-prune_repo "libra/client"
-prune_repo "libra/cluster_test"
-prune_repo "libra/init"
-prune_repo "libra/faucet"
-prune_repo "libra/tools"
-prune_repo "libra/validator"
-prune_repo "libra/validator_tcb"
+prune_repo "diem/forge"
 
 #We currently overwrite, no need to delete.
 #prune_repo "diem/build_environment"

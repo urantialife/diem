@@ -127,6 +127,11 @@ impl LedgerInfo {
     pub fn set_consensus_data_hash(&mut self, consensus_data_hash: HashValue) {
         self.consensus_data_hash = consensus_data_hash;
     }
+
+    #[cfg(any(test, feature = "fuzzing"))]
+    pub fn set_executed_state_id(&mut self, id: HashValue) {
+        self.commit_info.set_executed_state_id(id)
+    }
 }
 
 /// Wrapper around LedgerInfoWithScheme to support future upgrades, this is the data being persisted.
@@ -195,7 +200,12 @@ pub struct LedgerInfoWithV0 {
 
 impl Display for LedgerInfoWithV0 {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.ledger_info)
+        write!(
+            f,
+            "LedgerInfo {{ commit_info: BlockInfo {{ epoch: {:?}, version: {:?} }} }}",
+            self.ledger_info.commit_info().epoch(),
+            self.ledger_info.commit_info().version()
+        )
     }
 }
 
@@ -228,6 +238,10 @@ impl LedgerInfoWithV0 {
         &self.ledger_info
     }
 
+    pub fn commit_info(&self) -> &BlockInfo {
+        self.ledger_info.commit_info()
+    }
+
     pub fn add_signature(&mut self, validator: AccountAddress, signature: Ed25519Signature) {
         self.signatures.entry(validator).or_insert(signature);
     }
@@ -245,6 +259,13 @@ impl LedgerInfoWithV0 {
         validator: &ValidatorVerifier,
     ) -> ::std::result::Result<(), VerifyError> {
         validator.batch_verify_aggregated_signatures(self.ledger_info(), self.signatures())
+    }
+
+    pub fn check_voting_power(
+        &self,
+        validator: &ValidatorVerifier,
+    ) -> ::std::result::Result<(), VerifyError> {
+        validator.check_voting_power(self.signatures.keys())
     }
 }
 

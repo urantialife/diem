@@ -4,16 +4,23 @@
 use crate::{
     account_resource::SimplifiedAccountResource,
     command::{Command, CommandName},
+    keys::{load_key, EncodingType, KeyType},
     validator_config::DecryptedValidatorConfig,
     validator_set::DecryptedValidatorInfo,
+    validator_state::VerifyValidatorStateResult,
     TransactionContext,
 };
-use diem_config::config;
-use diem_crypto::{ed25519::Ed25519PublicKey, x25519};
+use diem_config::{config, config::Peer, network_id::NetworkId};
+use diem_crypto::{ed25519::Ed25519PublicKey, traits::ValidCryptoMaterialStringExt, x25519};
 use diem_management::{error::Error, secure_backend::DISK};
 use diem_types::{
     account_address::AccountAddress, chain_id::ChainId, network_address::NetworkAddress,
-    waypoint::Waypoint,
+    waypoint::Waypoint, PeerId,
+};
+use itertools::Itertools;
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
 };
 use structopt::StructOpt;
 
@@ -28,6 +35,13 @@ pub struct OperationalTool {
 impl OperationalTool {
     pub fn new(host: String, chain_id: ChainId) -> OperationalTool {
         OperationalTool { host, chain_id }
+    }
+
+    pub fn test() -> OperationalTool {
+        OperationalTool {
+            host: "localhost".to_string(),
+            chain_id: ChainId::test(),
+        }
     }
 
     pub fn account_resource(
@@ -49,17 +63,48 @@ impl OperationalTool {
         command.account_resource()
     }
 
-    pub fn check_endpoint(&self, network_address: NetworkAddress) -> Result<String, Error> {
+    pub fn check_endpoint(
+        &self,
+        network_id: &NetworkId,
+        network_address: NetworkAddress,
+    ) -> Result<String, Error> {
         let args = format!(
             "
                 {command}
                 --address {network_address}
+                --chain-id {chain_id}
+                --network-id {network_id}
             ",
             command = command(TOOL_NAME, CommandName::CheckEndpoint),
+            chain_id = self.chain_id.id(),
             network_address = network_address,
+            network_id = network_id
         );
         let command = Command::from_iter(args.split_whitespace());
         command.check_endpoint()
+    }
+
+    pub fn check_endpoint_with_key(
+        &self,
+        network_id: &NetworkId,
+        network_address: NetworkAddress,
+        private_key: &x25519::PrivateKey,
+    ) -> Result<String, Error> {
+        let args = format!(
+            "
+                {command}
+                --address {network_address}
+                --chain-id {chain_id}
+                --network-id {network_id}
+                --private-key {private_key}
+            ",
+            command = command(TOOL_NAME, CommandName::CheckEndpoint),
+            chain_id = self.chain_id.id(),
+            network_address = network_address,
+            network_id = network_id,
+            private_key = private_key.to_encoded_string().unwrap(),
+        );
+        Command::from_iter(args.split_whitespace()).check_endpoint()
     }
 
     pub fn create_account(
@@ -132,6 +177,8 @@ impl OperationalTool {
         &self,
         key_name: &str,
         key_file: &str,
+        key_type: KeyType,
+        encoding: EncodingType,
         backend: &config::SecureBackend,
         command_name: CommandName,
         execute: fn(Command) -> Result<(), Error>,
@@ -141,11 +188,15 @@ impl OperationalTool {
                 {command}
                 --key-name {key_name}
                 --key-file {key_file}
+                --key-type {key_type:?}
+                --encoding {encoding:?}
                 --validator-backend {backend_args}
             ",
             command = command(TOOL_NAME, command_name),
             key_name = key_name,
             key_file = key_file,
+            key_type = key_type,
+            encoding = encoding,
             backend_args = backend_args(backend)?,
         );
 
@@ -157,11 +208,15 @@ impl OperationalTool {
         &self,
         key_name: &str,
         key_file: &str,
+        key_type: KeyType,
+        encoding: EncodingType,
         backend: &config::SecureBackend,
     ) -> Result<(), Error> {
         self.extract_key(
             key_name,
             key_file,
+            key_type,
+            encoding,
             backend,
             CommandName::ExtractPublicKey,
             |cmd| cmd.extract_public_key(),
@@ -172,15 +227,102 @@ impl OperationalTool {
         &self,
         key_name: &str,
         key_file: &str,
+        key_type: KeyType,
+        encoding: EncodingType,
         backend: &config::SecureBackend,
     ) -> Result<(), Error> {
         self.extract_key(
             key_name,
             key_file,
+            key_type,
+            encoding,
             backend,
             CommandName::ExtractPrivateKey,
             |cmd| cmd.extract_private_key(),
         )
+    }
+
+    pub fn extract_peer_from_file(
+        &self,
+        key_file: &Path,
+        encoding: EncodingType,
+    ) -> Result<HashMap<PeerId, Peer>, Error> {
+        let args = format!(
+            "
+                {command}
+                --key-file {key_file}
+                --encoding {encoding:?}
+            ",
+            command = command(TOOL_NAME, CommandName::ExtractPeerFromFile),
+            key_file = key_file.to_str().unwrap(),
+            encoding = encoding
+        );
+
+        let command = Command::from_iter(args.split_whitespace());
+        command.extract_peer_from_file()
+    }
+
+    pub fn extract_peer_from_storage(
+        &self,
+        key_name: &str,
+        backend: &config::SecureBackend,
+    ) -> Result<HashMap<PeerId, Peer>, Error> {
+        let args = format!(
+            "
+                {command}
+                --key-name {key_name}
+                --validator-backend {backend_args}
+            ",
+            command = command(TOOL_NAME, CommandName::ExtractPeerFromStorage),
+            key_name = key_name,
+            backend_args = backend_args(backend)?,
+        );
+
+        let command = Command::from_iter(args.split_whitespace());
+        command.extract_peer_from_storage()
+    }
+
+    pub fn extract_peers_from_keys(
+        &self,
+        keys: HashSet<x25519::PublicKey>,
+        output_file: &Path,
+    ) -> Result<HashMap<PeerId, Peer>, Error> {
+        let args = format!(
+            "
+                {command}
+                --keys {keys}
+                --output-file {output_file}
+            ",
+            command = command(TOOL_NAME, CommandName::ExtractPeersFromKeys),
+            keys = keys.iter().join(","),
+            output_file = output_file.to_str().unwrap(),
+        );
+
+        let command = Command::from_iter(args.split_whitespace());
+        command.extract_peers_from_keys()
+    }
+
+    pub fn generate_key(
+        &self,
+        key_type: KeyType,
+        key_file: &Path,
+        encoding: EncodingType,
+    ) -> Result<x25519::PrivateKey, Error> {
+        let args = format!(
+            "
+                {command}
+                --key-type {key_type:?}
+                --key-file {key_file}
+                --encoding {encoding:?}
+            ",
+            command = command(TOOL_NAME, CommandName::GenerateKey),
+            key_type = key_type,
+            key_file = key_file.to_str().unwrap(),
+            encoding = encoding,
+        );
+        let command = Command::from_iter(args.split_whitespace());
+        command.generate_key()?;
+        load_key(key_file.to_path_buf(), encoding)
     }
 
     pub fn insert_waypoint(
@@ -457,19 +599,25 @@ impl OperationalTool {
     pub fn validator_config(
         &self,
         account_address: AccountAddress,
-        backend: &config::SecureBackend,
+        backend: Option<&config::SecureBackend>,
     ) -> Result<DecryptedValidatorConfig, Error> {
+        let validator_backend = if let Some(backend) = backend {
+            Some(backend_args(backend)?)
+        } else {
+            None
+        };
+
         let args = format!(
             "
                 {command}
                 --json-server {json_server}
                 --account-address {account_address}
-                --validator-backend {backend_args}
+                {validator_backend}
             ",
             command = command(TOOL_NAME, CommandName::ValidatorConfig),
             json_server = self.host,
             account_address = account_address,
-            backend_args = backend_args(backend)?,
+            validator_backend = optional_arg("validator-backend", validator_backend),
         );
 
         let command = Command::from_iter(args.split_whitespace());
@@ -479,19 +627,25 @@ impl OperationalTool {
     pub fn validator_set(
         &self,
         account_address: Option<AccountAddress>,
-        backend: &config::SecureBackend,
+        backend: Option<&config::SecureBackend>,
     ) -> Result<Vec<DecryptedValidatorInfo>, Error> {
+        let validator_backend = if let Some(backend) = backend {
+            Some(backend_args(backend)?)
+        } else {
+            None
+        };
+
         let args = format!(
             "
                 {command}
                 {account_address}
                 --json-server {json_server}
-                --validator-backend {backend_args}
+                {validator_backend}
             ",
             command = command(TOOL_NAME, CommandName::ValidatorSet),
             json_server = self.host,
             account_address = optional_arg("account-address", account_address),
-            backend_args = backend_args(backend)?,
+            validator_backend = optional_arg("validator-backend", validator_backend),
         );
 
         let command = Command::from_iter(args.split_whitespace());
@@ -555,6 +709,24 @@ impl OperationalTool {
             |cmd| cmd.remove_validator(),
         )
     }
+
+    pub fn verify_validator_state(
+        &self,
+        backend: &config::SecureBackend,
+    ) -> Result<VerifyValidatorStateResult, Error> {
+        let args = format!(
+            "
+                {command}
+                --json-server {host}
+                --validator-backend {backend_args}
+            ",
+            command = command(TOOL_NAME, CommandName::VerifyValidatorState),
+            host = self.host,
+            backend_args = backend_args(backend)?,
+        );
+        let command = Command::from_iter(args.split_whitespace());
+        command.verify_validator_state()
+    }
 }
 
 fn command(tool_name: &'static str, command: CommandName) -> String {
@@ -583,14 +755,19 @@ fn optional_flag(flag: &'static str, enable_flag: bool) -> String {
 /// TODO: Support other types of storage
 fn backend_args(backend: &config::SecureBackend) -> Result<String, Error> {
     match backend {
-        config::SecureBackend::OnDiskStorage(config) => Ok(format!(
-            "backend={backend};\
-            path={path};\
-            namespace={namespace}",
-            backend = DISK,
-            namespace = config.namespace.clone().unwrap(),
-            path = config.path.to_str().unwrap(),
-        )),
+        config::SecureBackend::OnDiskStorage(config) => {
+            let mut s = format!(
+                "backend={backend};\
+                 path={path}",
+                backend = DISK,
+                path = config.path.to_str().unwrap(),
+            );
+            if let Some(namespace) = config.namespace.as_ref() {
+                s.push_str(&format!(";namespace={}", namespace));
+            }
+
+            Ok(s)
+        }
         _ => Err(Error::UnexpectedError("Storage isn't on disk".to_string())),
     }
 }

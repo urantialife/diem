@@ -1,7 +1,7 @@
 const darkCodeTheme = require('prism-react-renderer/themes/palenight');
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 const objectAssignDeep = require('object-assign-deep');
-const universalConfig = require('@libra-opensource/diem-docusaurus-components/src/universal-config');
+const universalConfig = require('./src/@libra-opensource/diem-docusaurus-components/src/universal-config');
 
 module.exports = objectAssignDeep(universalConfig, {
   title: 'Diem Documentation',
@@ -17,13 +17,15 @@ module.exports = objectAssignDeep(universalConfig, {
       apiKey: 'f0c9dd5d95535c4b0d99aa1fbcb0e949',
       indexName: 'diem_developer_website',
     },
+    googleAnalytics: {
+      trackingID: 'UA-157097059-1',
+    },
     image: "/img/shared/share-logo.jpg",
     prism: {
       darkTheme: darkCodeTheme,
       theme: lightCodeTheme,
       additionalLanguages: ['java'],
     },
-    sidebarCollapsible: false,
     siteID: 'developers',
   },
   plugins: [
@@ -43,7 +45,7 @@ module.exports = objectAssignDeep(universalConfig, {
       },
     ],
     require.resolve(
-      '@libra-opensource/diem-docusaurus-components/src/plugin-segment',
+      './src/@libra-opensource/diem-docusaurus-components/src/plugin-segment',
     ),
   ],
   presets: [
@@ -53,16 +55,16 @@ module.exports = objectAssignDeep(universalConfig, {
         docs: {
           sidebarPath: require.resolve('./sidebars'),
           // Please change this to your repo.
-          editUrl: 'https://github.com/diem/diem/edit/master/developers.diem.com/',
+          editUrl: 'https://github.com/diem/diem/edit/main/developers.diem.com/',
         },
         blog: {
           showReadingTime: true,
           // Please change this to your repo.
-          editUrl:
-            'https://github.com/diem/diem/edit/master/developers.diem.com/blog/',
+          editUrl: 'https://github.com/diem/diem/edit/main/developers.diem.com/blog/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
+          sidebarCollapsible: false,
         },
       },
     ],

@@ -94,7 +94,7 @@ impl TestHarness {
             network_context,
             time_service.clone(),
             trusted_peers.clone(),
-            &seeds,
+            seeds,
             ConnectionRequestSender::new(connection_reqs_tx),
             connection_notifs_rx,
             conn_mgr_reqs_rx,
@@ -102,6 +102,7 @@ impl TestHarness {
             FixedInterval::new(CONNECTION_DELAY),
             MAX_CONNECTION_DELAY,
             Some(MAX_TEST_CONNECTIONS),
+            true, /* mutual_authentication */
         );
         let mock = Self {
             trusted_peers,
@@ -155,7 +156,11 @@ impl TestHarness {
             "Sending NewPeer notification for peer: {}",
             peer_id.short_str()
         );
-        let mut metadata = ConnectionMetadata::mock(notif_peer_id);
+        let mut metadata = ConnectionMetadata::mock_with_role_and_origin(
+            notif_peer_id,
+            PeerRole::Unknown,
+            ConnectionOrigin::Outbound,
+        );
         metadata.addr = address;
         let notif = peer_manager::ConnectionNotification::NewPeer(metadata, NetworkContext::mock());
         self.send_notification_await_delivery(peer_id, notif).await;
@@ -166,7 +171,11 @@ impl TestHarness {
             "Sending LostPeer notification for peer: {}",
             peer_id.short_str()
         );
-        let mut metadata = ConnectionMetadata::mock(peer_id);
+        let mut metadata = ConnectionMetadata::mock_with_role_and_origin(
+            peer_id,
+            PeerRole::Unknown,
+            ConnectionOrigin::Outbound,
+        );
         metadata.addr = address;
         let notif = peer_manager::ConnectionNotification::LostPeer(
             metadata,
@@ -316,7 +325,7 @@ fn connect_to_seeds_on_startup() {
 
         // Sending an UpdateDiscoveredPeers with the same seed address should not
         // trigger any dials.
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, seeds)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, seeds)
             .await;
         mock.trigger_connectivity_check().await;
         assert_eq!(0, mock.get_dial_queue_size().await);
@@ -325,7 +334,7 @@ fn connect_to_seeds_on_startup() {
         let (new_seed, new_seed_addr) =
             update_peer_with_address(seed_peer, "/ip4/127.0.1.1/tcp/8080");
         let update = hashmap! {seed_peer_id => new_seed};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
 
         // We expect the peer which changed its address to also disconnect.
@@ -353,7 +362,7 @@ fn addr_change() {
     let test = async move {
         // Sending address of other peer
         let update = hashmap! {other_peer_id => other_peer.clone()};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update.clone())
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update.clone())
             .await;
 
         // Peer manager receives a request to connect to the other peer.
@@ -364,7 +373,7 @@ fn addr_change() {
 
         // Send request to connect to other peer at old address. ConnectivityManager should not
         // dial, since we are already connected at the new address.
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
         mock.trigger_connectivity_check().await;
         assert_eq!(0, mock.get_dial_queue_size().await);
@@ -373,7 +382,7 @@ fn addr_change() {
         let (other_peer_new, other_addr_new) =
             update_peer_with_address(other_peer, "/ip4/127.0.1.1/tcp/8080");
         let update = hashmap! {other_peer_id => other_peer_new};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
         mock.trigger_connectivity_check().await;
         assert_eq!(1, mock.get_connected_size().await);
@@ -400,7 +409,7 @@ fn lost_connection() {
     let test = async move {
         // Sending address of other peer
         let update = hashmap! {other_peer_id => other_peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
 
         // Peer manager receives a request to connect to the other peer.
@@ -431,7 +440,7 @@ fn disconnect() {
     let test = async move {
         // Sending pubkey & address of other peer
         let peers = hashmap! {other_peer_id => other_peer.clone()};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // Waiting to receive dial request
@@ -446,7 +455,7 @@ fn disconnect() {
         peer.addresses = vec![network_address(DEFAULT_BASE_ADDR)];
 
         let peers = hashmap! {other_peer_id => peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // Peer is now ineligible, we should disconnect from them
@@ -466,7 +475,7 @@ fn retry_on_failure() {
     let test = async move {
         // Sending pubkey set and addr of other peer
         let peers = hashmap! {other_peer_id => peer.clone()};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // First dial attempt fails
@@ -486,7 +495,7 @@ fn retry_on_failure() {
         peer.keys = HashSet::new();
         peer.addresses = vec![network_address(DEFAULT_BASE_ADDR)];
         let peers = hashmap! {other_peer_id => peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // Peer manager receives a request to disconnect from the other peer, which fails.
@@ -513,7 +522,7 @@ fn no_op_requests() {
     let test = async move {
         // Sending pubkey set and addr of other peer
         let peers = hashmap! {other_peer_id => peer.clone()};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // Peer manager receives a request to connect to the other peer.
@@ -532,7 +541,7 @@ fn no_op_requests() {
         peer.keys = HashSet::new();
         peer.addresses = vec![network_address(DEFAULT_BASE_ADDR)];
         let peers = hashmap! {other_peer_id => peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // Peer manager receives a request to disconnect from the other peer, which fails.
@@ -564,7 +573,7 @@ fn backoff_on_failure() {
 
         // Sending pubkey set and addr of peers
         let peers = hashmap! {peer_id_a => peer_a, peer_id_b => peer_b};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, peers)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers)
             .await;
 
         // Send NewPeer notification for peer_b.
@@ -604,7 +613,7 @@ fn multiple_addrs_basic() {
 
         // Sending address of other peer
         let update = hashmap! {other_peer_id => peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
 
         // Assume that the first listen addr fails to connect.
@@ -637,7 +646,7 @@ fn multiple_addrs_wrapping() {
 
         // Sending address of other peer
         let update = hashmap! {other_peer_id => peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
 
         // Assume that the first listen addr fails to connect.
@@ -675,7 +684,7 @@ fn multiple_addrs_shrinking() {
 
         // Sending address of other peer
         let update = hashmap! {other_peer_id => peer.clone()};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
 
         // Assume that the first listen addr fails to connect.
@@ -689,7 +698,7 @@ fn multiple_addrs_shrinking() {
 
         // The peer issues a new, smaller set of listen addrs.
         let update = hashmap! {other_peer_id => peer};
-        mock.send_update_discovered_peers(DiscoverySource::OnChain, update)
+        mock.send_update_discovered_peers(DiscoverySource::OnChainValidatorSet, update)
             .await;
 
         // After updating the addresses, we should dial the first new address,
@@ -758,25 +767,27 @@ fn basic_update_discovered_peers() {
     let peers_1_2 = hashmap! {peer_id_a => peer_a_1_2, peer_id_b => peer_b1};
 
     // basic one peer one discovery source
-    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChain, peers_1.clone());
+    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers_1.clone());
     assert_eq!(*trusted_peers.read(), peers_1);
 
     // same update does nothing
-    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChain, peers_1.clone());
+    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers_1.clone());
     assert_eq!(*trusted_peers.read(), peers_1);
 
     // reset
-    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChain, peers_empty.clone());
+    conn_mgr
+        .handle_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers_empty.clone());
     assert_eq!(*trusted_peers.read(), peers_empty);
 
     // basic union across multiple sources
-    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChain, peers_1.clone());
+    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers_1.clone());
     assert_eq!(*trusted_peers.read(), peers_1);
     conn_mgr.handle_update_discovered_peers(DiscoverySource::Config, peers_2);
     assert_eq!(*trusted_peers.read(), peers_1_2);
 
     // does nothing even if another source has same set
-    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChain, peers_1_2.clone());
+    conn_mgr
+        .handle_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers_1_2.clone());
     assert_eq!(*trusted_peers.read(), peers_1_2);
     conn_mgr.handle_update_discovered_peers(DiscoverySource::Config, peers_1_2.clone());
     assert_eq!(*trusted_peers.read(), peers_1_2);
@@ -786,7 +797,8 @@ fn basic_update_discovered_peers() {
     assert_eq!(*trusted_peers.read(), peers_1_2);
 
     // reset
-    conn_mgr.handle_update_discovered_peers(DiscoverySource::OnChain, peers_empty.clone());
+    conn_mgr
+        .handle_update_discovered_peers(DiscoverySource::OnChainValidatorSet, peers_empty.clone());
     assert_eq!(*trusted_peers.read(), peers_empty);
 
     // empty update again does nothing

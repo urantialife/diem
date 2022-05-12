@@ -1,4 +1,4 @@
-FROM debian:buster-20210208@sha256:1092695e843ad975267131f27a2b523128c4e03d2d96574bbdd7cf949ed51475 AS debian-base
+FROM debian:buster-20211011@sha256:f9182ead292f45165f4a851e5ff98ea0800e172ccedce7d17764ffaae5ed4d6e AS debian-base
 
 FROM debian-base AS toolchain
 
@@ -14,26 +14,21 @@ WORKDIR /diem
 COPY rust-toolchain /diem/rust-toolchain
 RUN rustup install $(cat rust-toolchain)
 
-COPY cargo-toolchain /diem/cargo-toolchain
-RUN rustup install $(cat cargo-toolchain)
-
 FROM toolchain AS builder
 
 ARG ENABLE_FAILPOINTS
 COPY . /diem
 
-RUN ./docker/build-common.sh
+RUN IMAGE_TARGETS="test" ./docker/build-common.sh
 
 ### Production Image ###
 FROM debian-base AS pre-test
 
-# TODO: Unsure which of these are needed exactly for client
 RUN apt-get update && apt-get install -y libssl1.1 nano net-tools tcpdump iproute2 netcat \
     && apt-get clean && rm -r /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/diem/bin  /diem/client/data/wallet/
 
-COPY --from=builder /diem/target/release/cli /opt/diem/bin
 COPY --from=builder /diem/target/release/diem-faucet /opt/diem/bin
 
 # Test the docker container before shipping.
@@ -53,4 +48,3 @@ ARG GIT_UPSTREAM
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.build-date=$BUILD_DATE
 LABEL org.label-schema.vcs-ref=$GIT_REV
-LABEL vcs-upstream=$GIT_UPSTREAM

@@ -22,7 +22,14 @@ pub struct StorageWrapper {
 }
 
 impl StorageWrapper {
-    pub fn encryptor(self) -> Encryptor {
+    pub fn new(storage_name: &'static str, storage: Storage) -> Self {
+        Self {
+            storage_name,
+            storage,
+        }
+    }
+
+    pub fn encryptor(self) -> Encryptor<Storage> {
         Encryptor::new(self.storage)
     }
 
@@ -86,16 +93,24 @@ impl StorageWrapper {
         &self,
         key_name: &'static str,
     ) -> Result<Ed25519PublicKey, Error> {
-        Ok(self
-            .storage
+        self.storage
             .get_public_key_previous_version(key_name)
-            .map_err(|e| Error::StorageReadError(self.storage_name, key_name, e.to_string()))?)
+            .map_err(|e| Error::StorageReadError(self.storage_name, key_name, e.to_string()))
     }
 
     /// Retrieves public key from the stored private key
     pub fn ed25519_private(&self, key_name: &'static str) -> Result<Ed25519PrivateKey, Error> {
         self.storage
             .export_private_key(key_name)
+            .map_err(|e| Error::StorageReadError(self.storage_name, key_name, e.to_string()))
+    }
+
+    pub fn x25519_private(&self, key_name: &'static str) -> Result<x25519::PrivateKey, Error> {
+        let key = self
+            .storage
+            .export_private_key(key_name)
+            .map_err(|e| Error::StorageReadError(self.storage_name, key_name, e.to_string()))?;
+        x25519::PrivateKey::from_ed25519_private_bytes(&key.to_bytes())
             .map_err(|e| Error::StorageReadError(self.storage_name, key_name, e.to_string()))
     }
 

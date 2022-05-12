@@ -9,6 +9,22 @@ AccountAddress:
     TUPLEARRAY:
       CONTENT: U8
       SIZE: 16
+AccountAuthenticator:
+  ENUM:
+    0:
+      Ed25519:
+        STRUCT:
+          - public_key:
+              TYPENAME: Ed25519PublicKey
+          - signature:
+              TYPENAME: Ed25519Signature
+    1:
+      MultiEd25519:
+        STRUCT:
+          - public_key:
+              TYPENAME: MultiEd25519PublicKey
+          - signature:
+              TYPENAME: MultiEd25519Signature
 Block:
   STRUCT:
     - block_data:
@@ -54,6 +70,9 @@ BlockRetrievalRequest:
     - block_id:
         TYPENAME: HashValue
     - num_blocks: U64
+    - target_block_id:
+        OPTION:
+          TYPENAME: HashValue
 BlockRetrievalResponse:
   STRUCT:
     - status:
@@ -69,6 +88,8 @@ BlockRetrievalStatus:
       IdNotFound: UNIT
     2:
       NotEnoughBlocks: UNIT
+    3:
+      SucceededWithTarget: UNIT
 BlockType:
   ENUM:
     0:
@@ -92,6 +113,18 @@ ChangeSet:
     - events:
         SEQ:
           TYPENAME: ContractEvent
+CommitDecision:
+  STRUCT:
+    - ledger_info:
+        TYPENAME: LedgerInfoWithSignatures
+CommitVote:
+  STRUCT:
+    - author:
+        TYPENAME: AccountAddress
+    - ledger_info:
+        TYPENAME: LedgerInfo
+    - signature:
+        TYPENAME: Ed25519Signature
 ConsensusMsg:
   ENUM:
     0:
@@ -122,6 +155,14 @@ ConsensusMsg:
       VoteMsg:
         NEWTYPE:
           TYPENAME: VoteMsg
+    7:
+      CommitVoteMsg:
+        NEWTYPE:
+          TYPENAME: CommitVote
+    8:
+      CommitDecisionMsg:
+        NEWTYPE:
+          TYPENAME: CommitDecision
 ContractEvent:
   ENUM:
     0:
@@ -186,6 +227,17 @@ LedgerInfoWithV0:
 Module:
   STRUCT:
     - code: BYTES
+ModuleBundle:
+  STRUCT:
+    - codes:
+        SEQ:
+          TYPENAME: Module
+ModuleId:
+  STRUCT:
+    - address:
+        TYPENAME: AccountAddress
+    - name:
+        TYPENAME: Identifier
 MultiEd25519PublicKey:
   NEWTYPESTRUCT: BYTES
 MultiEd25519Signature:
@@ -224,6 +276,17 @@ Script:
     - args:
         SEQ:
           TYPENAME: TransactionArgument
+ScriptFunction:
+  STRUCT:
+    - module:
+        TYPENAME: ModuleId
+    - function:
+        TYPENAME: Identifier
+    - ty_args:
+        SEQ:
+          TYPENAME: TypeTag
+    - args:
+        SEQ: BYTES
 SignedTransaction:
   STRUCT:
     - raw_txn:
@@ -245,12 +308,18 @@ SyncInfo:
   STRUCT:
     - highest_quorum_cert:
         TYPENAME: QuorumCert
-    - highest_commit_cert:
+    - highest_ordered_cert:
         OPTION:
           TYPENAME: QuorumCert
+    - highest_ledger_info:
+        OPTION:
+          TYPENAME: LedgerInfoWithSignatures
     - highest_timeout_cert:
         OPTION:
           TYPENAME: TimeoutCertificate
+    - highest_2chain_timeout_cert:
+        OPTION:
+          TYPENAME: TwoChainTimeoutCertificate
 Timeout:
   STRUCT:
     - epoch: U64
@@ -279,6 +348,8 @@ Transaction:
       BlockMetadata:
         NEWTYPE:
           TYPENAME: BlockMetadata
+    3:
+      StateCheckpoint: UNIT
 TransactionArgument:
   ENUM:
     0:
@@ -316,6 +387,17 @@ TransactionAuthenticator:
               TYPENAME: MultiEd25519PublicKey
           - signature:
               TYPENAME: MultiEd25519Signature
+    2:
+      MultiAgent:
+        STRUCT:
+          - sender:
+              TYPENAME: AccountAuthenticator
+          - secondary_signer_addresses:
+              SEQ:
+                TYPENAME: AccountAddress
+          - secondary_signers:
+              SEQ:
+                TYPENAME: AccountAuthenticator
 TransactionPayload:
   ENUM:
     0:
@@ -327,9 +409,31 @@ TransactionPayload:
         NEWTYPE:
           TYPENAME: Script
     2:
-      Module:
+      ModuleBundle:
         NEWTYPE:
-          TYPENAME: Module
+          TYPENAME: ModuleBundle
+    3:
+      ScriptFunction:
+        NEWTYPE:
+          TYPENAME: ScriptFunction
+TwoChainTimeout:
+  STRUCT:
+    - epoch: U64
+    - round: U64
+    - quorum_cert:
+        TYPENAME: QuorumCert
+TwoChainTimeoutCertificate:
+  STRUCT:
+    - timeout:
+        TYPENAME: TwoChainTimeout
+    - signatures:
+        MAP:
+          KEY:
+            TYPENAME: AccountAddress
+          VALUE:
+            TUPLE:
+              - U64
+              - TYPENAME: Ed25519Signature
 TypeTag:
   ENUM:
     0:
@@ -380,6 +484,11 @@ Vote:
     - timeout_signature:
         OPTION:
           TYPENAME: Ed25519Signature
+    - two_chain_timeout:
+        OPTION:
+          TUPLE:
+            - TYPENAME: TwoChainTimeout
+            - TYPENAME: Ed25519Signature
 VoteData:
   STRUCT:
     - proposed:

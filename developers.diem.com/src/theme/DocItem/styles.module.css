@@ -12,9 +12,22 @@
     var(--doc-padding-left);
 }
 
+.docItemContainer a {
+  --ifm-link-decoration: underline;
+}
+
 .docItemContainer.wider {
   --doc-padding-left: 35px;
   --doc-padding-right: 25px;
+}
+
+.docItemContainer.thinner {
+  max-width: 1100px;
+  --doc-card-3-per-row: 307px;
+}
+
+.docItemContainer.noPadTop {
+  --doc-padding-top: 0;
 }
 
 .docItemWrapper {
@@ -49,7 +62,7 @@
 }
 
 html {
-  --doc-primary: #15112C;
+  --doc-primary: #000000;
 }
 
 html[data-theme='dark'] {

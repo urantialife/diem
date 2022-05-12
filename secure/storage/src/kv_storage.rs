@@ -29,6 +29,28 @@ pub trait KVStorage {
     fn reset_and_clear(&mut self) -> Result<(), Error>;
 }
 
+impl<'a, S> KVStorage for &'a mut S
+where
+    S: KVStorage,
+{
+    fn available(&self) -> Result<(), Error> {
+        S::available(self)
+    }
+
+    fn get<T: DeserializeOwned>(&self, key: &str) -> Result<GetResponse<T>, Error> {
+        S::get(self, key)
+    }
+
+    fn set<T: Serialize>(&mut self, key: &str, value: T) -> Result<(), Error> {
+        S::set(self, key, value)
+    }
+
+    #[cfg(any(test, feature = "testing"))]
+    fn reset_and_clear(&mut self) -> Result<(), Error> {
+        S::reset_and_clear(self)
+    }
+}
+
 /// A container for a get response that contains relevant metadata and the value stored at the
 /// given key.
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
@@ -43,6 +65,6 @@ pub struct GetResponse<T> {
 impl<T> GetResponse<T> {
     /// Creates a GetResponse
     pub fn new(value: T, last_update: u64) -> Self {
-        Self { value, last_update }
+        Self { last_update, value }
     }
 }

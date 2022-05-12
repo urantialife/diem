@@ -1,12 +1,10 @@
 ---
-id: glossary
-title: Glossary
-sidebar_label: Terminology
+title: "Glossary"
+slug: "glossary"
+hidden: false
 ---
 
 ## A
-
----
 
 ### Accumulator Root Hash
 
@@ -27,11 +25,6 @@ sidebar_label: Terminology
 
 - The address of a Diem payment system account is a 16-byte value. Users can claim addresses using digital signatures. The account address is derived from a cryptographic hash of a user’s public verification key concatenated with a signature scheme identifier byte. The Diem payment system supports two signature schemes: Ed25519 (for single-signature transactions) and MultiEd25519 (for multi-signature transactions). To sign a transaction sent from an account address, the user, or the custodial client representing the user, must use the private key that corresponds to that account.
 
-### JSON-RPC Service
-
-- The JSON-RPC Service component is the external interface of a Diem node. Any incoming client request, such as submitted transactions or queries, must first go through the JSON-RPC Service. A client needs to go through the JSON-RPC Service component to access storage or any other component in the system. This filters requests and protects the system.
-- Whenever a client submits a new transaction, the JSON-RPC Service passes it to [mempool](#mempool).
-
 
 ### Authentication Key
 
@@ -40,8 +33,6 @@ sidebar_label: Terminology
 - Users can rotate their signing key by rotating their authentication key.
 
 ## B
-
----
 
 ### Block
 
@@ -69,7 +60,9 @@ sidebar_label: Terminology
 
 ## C
 
----
+### ChildVASP account
+
+The ChildVASP account is the child of your ParentVASP account. A ChildVASP account stores the address of its ParentVASP. You can have any number of ChildVASP accounts.
 
 ### Client
 
@@ -96,8 +89,6 @@ A **client** is a piece of software that has the capability to interact with the
 
 
 ## D
-
----
 
 ### Designated Dealer
 
@@ -149,8 +140,6 @@ A Diem node is a peer entity of the Diem network that tracks the state of the Di
 
 ## E
 
----
-
 ### Ed25519
 
 - **Ed25519** is our supported digital signature scheme.
@@ -188,8 +177,6 @@ then there is a guarantee that T_N will never be included in the blockchain.
 
 ## F
 
----
-
 ### Faucet
 
 - **Faucet** is the way to create Diem currency with no real-world value, only on our testnet.
@@ -210,8 +197,6 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 
 ## G
 
----
-
 ### Gas
 
 - **Gas** is a way to pay for computation and storage on a blockchain network. All transactions on the Diem network cost a certain amount of gas.
@@ -226,8 +211,6 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 
 ## H
 
----
-
 ### Honest (Validator)
 
 - A validator that faithfully executes the consensus protocol and is not Byzantine.
@@ -238,9 +221,15 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 - DiemBFT, the Diem network's consensus algorithm, is based on HotStuff.
 - It simplifies the reasoning about safety, and it addresses some performance limitations of previous consensus protocols.
 
-## L
+## J
 
----
+### JSON-RPC Service
+
+- The JSON-RPC Service component is the external interface of a Diem node. Any incoming client request, such as submitted transactions or queries, must first go through the JSON-RPC Service. A client needs to go through the JSON-RPC Service component to access storage or any other component in the system. This filters requests and protects the system.
+- Whenever a client submits a new transaction, the JSON-RPC Service passes it to [mempool](#mempool).
+
+
+## L
 
 ### Leader
 
@@ -252,7 +241,9 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 
 ## M
 
----
+### Mainnet
+The production network for the Diem Payment Network.
+
 
 ### Maximum Gas Amount
 
@@ -309,8 +300,6 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 
 ## N
 
----
-
 ### Node
 
 - A **node** is a peer entity of the Diem network that tracks the state of the Diem Blockchain.
@@ -318,15 +307,16 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 
 ## O
 
----
-
 ### Open-Source Community
 
 - **Open-source community** is a term used for a group of developers who work on open-source software. If you're reading this glossary, then you are part of the Diem project's developer community.
 
 ## P
 
----
+### ParentVASP account
+
+The ParentVASP account is your unique root account. You can have only one parent account per Regulated VASP. Diem Networks will create a ParentVASP account on your behalf with your authentication key.
+
 
 ### Proof
 
@@ -335,8 +325,6 @@ These are FullNodes used by DPN Participants to forward transactions to the vali
 - For example, if a user queries the information within a particular executed transaction, they will be provided with a cryptographic proof that the data returned to them is correct.
 
 ## R
-
----
 
 ### Regulated VASP
 
@@ -359,8 +347,6 @@ Under the DPN Rules, a VASP is defined as a natural or legal person that as a bu
 - A **round number** is a shared counter used to select leaders during an [epoch](#epoch) of the consensus protocol.
 
 ## S
-
----
 
 ### Sequence Number
 
@@ -389,8 +375,6 @@ Under the DPN Rules, a VASP is defined as a natural or legal person that as a bu
 - **State root hash** is a [Merkle hash](https://en.wikipedia.org/wiki/Merkle_tree) over all keys and values the state of the Diem Blockchain at a given version.
 
 ## T
-
----
 
 ### testnet
 
@@ -421,8 +405,6 @@ Under the DPN Rules, a VASP is defined as a natural or legal person that as a bu
 
 ## V
 
----
-
 ### Validator
 
 - _Alternate name_: Validators.
@@ -437,8 +419,6 @@ Under the DPN Rules, a VASP is defined as a natural or legal person that as a bu
 - A transaction at height 0 is the first transaction (genesis transaction), and a transaction at height 100 is the 101st transaction in the transaction store.
 
 ## W
-
----
 
 ### Well-Formed Transaction
 

@@ -34,7 +34,7 @@ sidebar_label: V2 Docs Guide
         icon="img/bobby-pin.svg"
         iconDark="img/bobby-pin-dark.svg"
         overlay="Second overlay (no content specified in comps"
-        title="Write a move program"
+        title="Write a Move program"
         type="snippetTab"
       />
     )},
@@ -98,7 +98,7 @@ function Example() {
 </MultiStepTabItem>
 <MultiStepTabItem value="py">
 
-```py
+```python
 def hello_world():
   print('Hello, world!')
 ```
@@ -173,7 +173,6 @@ class HelloWorld {
   <CoreReference />
   <MerchantReference />
   <WalletReference />
-  <MoveReference />
   <NodeReference />
 </CardsWrapper>
 
@@ -227,7 +226,7 @@ function Example() {
         icon="img/bobby-pin.svg"
         iconDark="img/bobby-pin-dark.svg"
         overlay="Second overlay (no content specified in comps"
-        title="Write a move program"
+        title="Write a Move program"
         type="snippetTab"
       />
     )},
@@ -291,7 +290,7 @@ function Example() {
 </MultiStepTabItem>
 <MultiStepTabItem value="py">
 
-```py
+```python
 def hello_world():
   print('Hello, world!')
 ```
@@ -329,7 +328,7 @@ class HelloWorld {
         color="purpleLight"
         icon="img/bobby-pin.svg"
         iconDark="img/bobby-pin-dark.svg"
-        title="Write a move program"
+        title="Write a Move program"
         type="snippetTab"
       />
     )},
@@ -412,7 +411,7 @@ function Example() {
 </MultiStepTabItem>
 <MultiStepTabItem value="py">
 
-```py
+```python
 def hello_world():
   print('Hello, world!')
 ```

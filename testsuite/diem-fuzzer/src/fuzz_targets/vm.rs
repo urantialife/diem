@@ -3,8 +3,8 @@
 
 use crate::FuzzTargetImpl;
 use diem_proptest_helpers::ValueGenerator;
+use move_binary_format::file_format::CompiledModule;
 use proptest::prelude::*;
-use vm::file_format::{CompiledModule, CompiledModuleMut};
 
 #[derive(Clone, Debug, Default)]
 pub struct CompiledModuleTarget;
@@ -15,7 +15,7 @@ impl FuzzTargetImpl for CompiledModuleTarget {
     }
 
     fn generate(&self, _idx: usize, gen: &mut ValueGenerator) -> Option<Vec<u8>> {
-        let value = gen.generate(any_with::<CompiledModuleMut>(16));
+        let value = gen.generate(any_with::<CompiledModule>(16));
         let mut out = vec![];
         value
             .serialize(&mut out)

@@ -7,13 +7,13 @@
 // the compiled stdlib.
 
 script {
-use 0x1::Diem;
-use 0x1::DiemAccount;
-use 0x1::XUS::XUS;
+use DiemFramework::Diem;
+use DiemFramework::DiemAccount;
+use DiemFramework::XUS::XUS;
 use {{sender}}::MyModule;
 
-fun main(account: &signer, recipient: address, amount: u64) {
-    let with_cap = DiemAccount::extract_withdraw_capability(account);
+fun main(account: signer, recipient: address, amount: u64) {
+    let with_cap = DiemAccount::extract_withdraw_capability(&account);
     DiemAccount::pay_from<XUS>(&with_cap, recipient, amount, x"", x"");
     DiemAccount::restore_withdraw_capability(with_cap);
     let coin = MyModule::id<XUS>(Diem::zero<XUS>());

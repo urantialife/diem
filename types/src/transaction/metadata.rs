@@ -17,6 +17,7 @@ pub enum Metadata {
     UnstructuredBytesMetadata(UnstructuredBytesMetadata),
     RefundMetadata(RefundMetadata),
     CoinTradeMetadata(CoinTradeMetadata),
+    PaymentMetadata(PaymentMetadata),
 }
 
 /// List of supported transaction metadata format versions for regular
@@ -82,7 +83,7 @@ pub enum TravelRuleMetadata {
 pub struct TravelRuleMetadataV0 {
     /// Off-chain reference_id.  Used when off-chain APIs are used.
     /// Specifies the off-chain reference ID that was agreed upon in off-chain APIs.
-    off_chain_reference_id: Option<String>,
+    pub off_chain_reference_id: Option<String>,
 }
 
 /// Opaque binary transaction metadata
@@ -90,7 +91,7 @@ pub struct TravelRuleMetadataV0 {
 pub struct UnstructuredBytesMetadata {
     /// Unstructured byte vector metadata
     #[serde(with = "serde_bytes")]
-    metadata: Option<Vec<u8>>,
+    pub metadata: Option<Vec<u8>>,
 }
 
 /// List of supported transaction metadata format versions for refund transaction
@@ -114,6 +115,7 @@ pub enum RefundReason {
     InvalidSubaddress,
     UserInitiatedPartialRefund,
     UserInitiatedFullRefund,
+    InvalidReferenceId,
 }
 
 /// List of supported transaction metadata format versions for coin trade transaction
@@ -127,4 +129,17 @@ pub enum CoinTradeMetadata {
 pub struct CoinTradeMetadataV0 {
     /// A list of trade_ids this transaction wants to settle
     pub trade_ids: Vec<String>,
+}
+
+/// List of supported transaction metadata format versions for transactions for payments
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum PaymentMetadata {
+    PaymentMetadataVersion0(PaymentMetadataV0),
+}
+
+/// Transaction metadata format for transactions for payments
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PaymentMetadataV0 {
+    /// Reference ID needed for off-chain reference ID exchange.
+    pub reference_id: [u8; 16],
 }

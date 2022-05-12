@@ -7,9 +7,10 @@ use accumulator::test_helpers::{
     test_append_empty_impl, test_append_many_impl, test_consistency_proof_impl,
     test_get_frozen_subtree_hashes_impl, test_proof_impl, test_range_proof_impl,
 };
+use diem_crypto::HashValue;
 use diem_jellyfish_merkle::test_helper::{
     arb_existent_kvs_and_nonexistent_keys, arb_kv_pair_with_distinct_last_nibble,
-    arb_tree_with_index, test_get_range_proof, test_get_with_proof,
+    arb_tree_with_index, test_get_leaf_count, test_get_range_proof, test_get_with_proof,
     test_get_with_proof_with_distinct_last_nibble,
 };
 use diem_proptest_helpers::ValueGenerator;
@@ -17,7 +18,13 @@ use diem_types::account_state_blob::AccountStateBlob;
 use diemdb::{
     schema::fuzzing::fuzz_decode, test_helper::arb_blocks_to_commit, test_save_blocks_impl,
 };
-use proptest::{collection::vec, prelude::*};
+use proptest::{
+    collection::{hash_set, vec},
+    prelude::*,
+};
+use scratchpad::test_utils::proptest_helpers::{
+    arb_smt_correctness_case, test_smt_correctness_impl,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct StorageSaveBlocks;
@@ -115,13 +122,31 @@ impl FuzzTargetImpl for JellyfishGetRangeProof {
 
     fn generate(&self, _idx: usize, _gen: &mut ValueGenerator) -> Option<Vec<u8>> {
         Some(corpus_from_strategy(
-            arb_tree_with_index::<AccountStateBlob>(1000),
+            arb_tree_with_index::<AccountStateBlob>(100),
         ))
     }
 
     fn fuzz(&self, data: &[u8]) {
-        let input = fuzz_data_to_value(data, arb_tree_with_index::<AccountStateBlob>(1000));
+        let input = fuzz_data_to_value(data, arb_tree_with_index::<AccountStateBlob>(100));
         test_get_range_proof(input);
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct JellyfishGetLeafCount;
+
+impl FuzzTargetImpl for JellyfishGetLeafCount {
+    fn description(&self) -> &'static str {
+        "JellyfishMerkleTree get leaf count"
+    }
+
+    fn generate(&self, _idx: usize, _gen: &mut ValueGenerator) -> Option<Vec<u8>> {
+        Some(corpus_from_strategy(hash_set(any::<HashValue>(), 1..1000)))
+    }
+
+    fn fuzz(&self, data: &[u8]) {
+        let input = fuzz_data_to_value(data, hash_set(any::<HashValue>(), 1..1000));
+        test_get_leaf_count(input);
     }
 }
 
@@ -140,6 +165,26 @@ impl FuzzTargetImpl for AccumulatorFrozenSubtreeHashes {
     fn fuzz(&self, data: &[u8]) {
         let input = fuzz_data_to_value(data, arb_hash_batch(1000));
         test_get_frozen_subtree_hashes_impl(input);
+    }
+}
+
+//============== Scratchpad =============
+
+#[derive(Clone, Debug, Default)]
+pub struct SparseMerkleCorrectness;
+
+impl FuzzTargetImpl for SparseMerkleCorrectness {
+    fn description(&self) -> &'static str {
+        "Scratchpad SMT correctness."
+    }
+
+    fn generate(&self, _idx: usize, _gen: &mut ValueGenerator) -> Option<Vec<u8>> {
+        Some(corpus_from_strategy(arb_smt_correctness_case()))
+    }
+
+    fn fuzz(&self, data: &[u8]) {
+        let input = fuzz_data_to_value(data, arb_smt_correctness_case());
+        test_smt_correctness_impl(input)
     }
 }
 

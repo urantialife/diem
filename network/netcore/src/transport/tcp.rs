@@ -106,7 +106,7 @@ impl Transport for TcpTransport {
                 _ => None,
             };
 
-            addr.and_then(|https_proxy| Url::parse(&https_proxy).ok())
+            addr.and_then(|https_proxy| Url::parse(https_proxy).ok())
                 .and_then(|url| {
                     if url.has_host() && url.scheme() == "http" {
                         Some(format!(
@@ -146,7 +146,7 @@ async fn resolve_with_filter(
 
 /// Note: we need to take ownership of this `NetworkAddress` (instead of just
 /// borrowing the `&[Protocol]` slice) so this future can be `Send + 'static`.
-async fn resolve_and_connect(addr: NetworkAddress) -> io::Result<TcpStream> {
+pub async fn resolve_and_connect(addr: NetworkAddress) -> io::Result<TcpStream> {
     let protos = addr.as_slice();
 
     if let Some(((ipaddr, port), _addr_suffix)) = parse_ip_tcp(protos) {
@@ -203,7 +203,7 @@ async fn connect_via_proxy(proxy_addr: String, addr: NetworkAddress) -> io::Resu
                     io::ErrorKind::Other,
                     format!(
                         "HTTP proxy CONNECT failed: {}",
-                        String::from_utf8_lossy(&msg)
+                        String::from_utf8_lossy(msg)
                     ),
                 ));
             } else if msg.len() >= 16
@@ -281,7 +281,7 @@ pub struct TcpSocket {
 }
 
 impl TcpSocket {
-    fn new(socket: TcpStream) -> Self {
+    pub fn new(socket: TcpStream) -> Self {
         use tokio_util::compat::TokioAsyncReadCompatExt;
 
         Self {

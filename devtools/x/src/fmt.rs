@@ -24,7 +24,7 @@ pub struct Args {
 
 pub fn run(args: Args, xctx: XContext) -> Result<()> {
     // Hardcode that we want imports merged
-    let mut pass_through_args = vec!["--config".into(), "merge_imports=true".into()];
+    let mut pass_through_args = vec!["--config".into(), "imports_granularity=crate".into()];
 
     if args.check {
         pass_through_args.push("--check".into());
@@ -32,7 +32,7 @@ pub fn run(args: Args, xctx: XContext) -> Result<()> {
 
     pass_through_args.extend(args.args);
 
-    let mut cmd = Cargo::new(xctx.config().cargo_config(), "fmt", false);
+    let mut cmd = Cargo::new(xctx.config().cargo_config(), "fmt", true);
 
     if args.workspace {
         // cargo fmt doesn't have a --workspace flag, instead it uses the

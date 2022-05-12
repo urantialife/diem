@@ -1,280 +1,338 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{smoke_test_environment::SmokeTestEnvironment, test_utils::compare_balances};
-use diem_types::account_config::{testnet_dd_account_address, treasury_compliance_account_address};
+use crate::{
+    smoke_test_environment::new_local_swarm,
+    test_utils::{
+        assert_balance, create_and_fund_account, transfer_coins, transfer_coins_non_blocking,
+    },
+};
+use diem_config::{
+    config::{DiscoveryMethod, NodeConfig, Peer, PeerRole, HANDSHAKE_VERSION},
+    network_id::NetworkId,
+};
+use diem_types::network_address::{NetworkAddress, Protocol};
+use forge::{NodeExt, Swarm, SwarmExt};
+use std::{
+    collections::HashSet,
+    net::Ipv4Addr,
+    time::{Duration, Instant},
+};
 
-#[test]
-fn test_full_node_basic_flow() {
-    let mut env = SmokeTestEnvironment::new(4);
-    env.setup_vfn_swarm();
-    env.setup_pfn_swarm(2);
+#[tokio::test]
+async fn test_full_node_basic_flow() {
+    let mut swarm = new_local_swarm(1).await;
 
-    env.validator_swarm.launch();
-    env.vfn_swarm.as_mut().unwrap().launch();
-    env.pfn_swarm.as_mut().unwrap().launch();
-
-    // read state from full node client
-    let mut validator_client = env.get_validator_client(0, None);
-    let mut vfn_client = env.get_vfn_client(1, None);
-    let mut pfn_client = env.get_pfn_client(0, None);
-
-    // mint from full node and check both validator and full node have correct balance
-    let account = validator_client.create_next_account(false).unwrap().address;
-    vfn_client.create_next_account(false).unwrap();
-    pfn_client.create_next_account(false).unwrap();
-
-    let sender_account = testnet_dd_account_address();
-    let creation_account = treasury_compliance_account_address();
-    let sequence_reset = format!("sequence {} true", sender_account);
-    let creation_sequence_reset = format!("sequence {} true", creation_account);
-    let sequence_reset_command: Vec<_> = sequence_reset.split(' ').collect();
-    let creation_sequence_reset_command: Vec<_> = creation_sequence_reset.split(' ').collect();
-
-    vfn_client
-        .get_sequence_number(&sequence_reset_command)
+    let transaction_factory = swarm.chain_info().transaction_factory();
+    let version = swarm.versions().max().unwrap();
+    let validator_peer_id = swarm.validators().next().unwrap().peer_id();
+    let vfn_peer_id = swarm
+        .add_validator_fullnode(
+            &version,
+            NodeConfig::default_for_validator_full_node(),
+            validator_peer_id,
+        )
+        .await
         .unwrap();
-    vfn_client
-        .get_sequence_number(&creation_sequence_reset_command)
+    let pfn_peer_id = swarm
+        .add_full_node(&version, NodeConfig::default_for_public_full_node())
         .unwrap();
-    vfn_client
-        .mint_coins(&["mintb", "0", "10", "XUS"], true)
-        .expect("Fail to mint!");
-    assert!(compare_balances(
-        vec![(10.0, "XUS".to_string())],
-        vfn_client.get_balances(&["b", "0"]).unwrap(),
-    ));
+    swarm
+        .validator_mut(validator_peer_id)
+        .unwrap()
+        .wait_until_healthy(Instant::now() + Duration::from_secs(10))
+        .await
+        .unwrap();
+    for fullnode in swarm.full_nodes_mut() {
+        fullnode
+            .wait_until_healthy(Instant::now() + Duration::from_secs(10))
+            .await
+            .unwrap();
+    }
 
-    let sequence = vfn_client
-        .get_sequence_number(&sequence_reset_command)
-        .unwrap();
-    validator_client
-        .wait_for_transaction(sender_account, sequence - 1)
-        .unwrap();
-    assert!(compare_balances(
-        vec![(10.0, "XUS".to_string())],
-        validator_client.get_balances(&["b", "0"]).unwrap(),
-    ));
+    // create clients for all nodes
+    let validator_client = swarm.validator(validator_peer_id).unwrap().rest_client();
+    let vfn_client = swarm.full_node(vfn_peer_id).unwrap().rest_client();
+    let pfn_client = swarm.full_node(pfn_peer_id).unwrap().rest_client();
 
-    // reset sequence number for sender account
-    validator_client
-        .get_sequence_number(&sequence_reset_command)
-        .unwrap();
-    vfn_client
-        .get_sequence_number(&sequence_reset_command)
-        .unwrap();
-    validator_client
-        .get_sequence_number(&creation_sequence_reset_command)
-        .unwrap();
-    vfn_client
-        .get_sequence_number(&creation_sequence_reset_command)
+    let mut account_0 = create_and_fund_account(&mut swarm, 10).await;
+    let account_1 = create_and_fund_account(&mut swarm, 10).await;
+
+    swarm
+        .wait_for_all_nodes_to_catchup(Instant::now() + Duration::from_secs(10))
+        .await
         .unwrap();
 
-    // mint from validator and check both nodes have correct balance
-    validator_client.create_next_account(false).unwrap();
-    vfn_client.create_next_account(false).unwrap();
-    pfn_client.create_next_account(false).unwrap();
+    // Send txn to PFN
+    let _txn = transfer_coins(
+        &pfn_client,
+        &transaction_factory,
+        &mut account_0,
+        &account_1,
+        1,
+    )
+    .await;
 
-    validator_client
-        .mint_coins(&["mintb", "1", "10", "XUS"], true)
-        .unwrap();
-    let sequence = validator_client
-        .get_sequence_number(&sequence_reset_command)
-        .unwrap();
-    vfn_client
-        .wait_for_transaction(sender_account, sequence - 1)
-        .unwrap();
+    assert_balance(&validator_client, &account_0, 9).await;
+    assert_balance(&validator_client, &account_1, 11).await;
+    assert_balance(&vfn_client, &account_0, 9).await;
+    assert_balance(&vfn_client, &account_1, 11).await;
+    assert_balance(&pfn_client, &account_0, 9).await;
+    assert_balance(&pfn_client, &account_1, 11).await;
 
-    assert!(compare_balances(
-        vec![(10.0, "XUS".to_string())],
-        validator_client.get_balances(&["b", "1"]).unwrap(),
-    ));
-    assert!(compare_balances(
-        vec![(10.0, "XUS".to_string())],
-        vfn_client.get_balances(&["b", "1"]).unwrap(),
-    ));
+    // Send txn to VFN
+    let txn = transfer_coins(
+        &vfn_client,
+        &transaction_factory,
+        &mut account_0,
+        &account_1,
+        1,
+    )
+    .await;
 
-    // minting again on validator doesn't cause error since client sequence has been updated
-    validator_client
-        .mint_coins(&["mintb", "1", "10", "XUS"], true)
-        .unwrap();
+    assert_balance(&validator_client, &account_0, 8).await;
+    assert_balance(&validator_client, &account_1, 12).await;
+    assert_balance(&vfn_client, &account_0, 8).await;
+    assert_balance(&vfn_client, &account_1, 12).await;
 
-    // test transferring balance from 0 to 1 through full node proxy
-    vfn_client
-        .transfer_coins(&["tb", "0", "1", "10", "XUS"], true)
-        .unwrap();
+    pfn_client.wait_for_signed_transaction(&txn).await.unwrap();
+    assert_balance(&pfn_client, &account_0, 8).await;
+    assert_balance(&pfn_client, &account_1, 12).await;
 
-    assert!(compare_balances(
-        vec![(0.0, "XUS".to_string())],
-        vfn_client.get_balances(&["b", "0"]).unwrap(),
-    ));
-    assert!(compare_balances(
-        vec![(30.0, "XUS".to_string())],
-        validator_client.get_balances(&["b", "1"]).unwrap(),
-    ));
+    // Send txn to Validator
+    let txn = transfer_coins(
+        &vfn_client,
+        &transaction_factory,
+        &mut account_0,
+        &account_1,
+        1,
+    )
+    .await;
 
-    let sequence = validator_client
-        .get_sequence_number(&["sequence", &format!("{}", account), "true"])
-        .unwrap();
-    pfn_client
-        .wait_for_transaction(account, sequence - 1)
-        .unwrap();
-    assert!(compare_balances(
-        vec![(0.0, "XUS".to_string())],
-        pfn_client.get_balances(&["b", "0"]).unwrap(),
-    ));
-    assert!(compare_balances(
-        vec![(30.0, "XUS".to_string())],
-        pfn_client.get_balances(&["b", "1"]).unwrap(),
-    ));
+    assert_balance(&validator_client, &account_0, 7).await;
+    assert_balance(&validator_client, &account_1, 13).await;
+
+    vfn_client.wait_for_signed_transaction(&txn).await.unwrap();
+    assert_balance(&vfn_client, &account_0, 7).await;
+    assert_balance(&vfn_client, &account_1, 13).await;
+
+    pfn_client.wait_for_signed_transaction(&txn).await.unwrap();
+    assert_balance(&pfn_client, &account_0, 7).await;
+    assert_balance(&pfn_client, &account_1, 13).await;
 }
 
-#[test]
-fn test_vfn_failover() {
-    let mut env = SmokeTestEnvironment::new(7);
-    env.setup_vfn_swarm();
-    env.setup_pfn_swarm(1);
+#[tokio::test]
+async fn test_vfn_failover() {
+    let mut swarm = new_local_swarm(4).await;
+    let transaction_factory = swarm.chain_info().transaction_factory();
+    let version = swarm.versions().max().unwrap();
+    let validator_peer_ids = swarm.validators().map(|v| v.peer_id()).collect::<Vec<_>>();
 
-    env.validator_swarm.launch();
-    env.vfn_swarm.as_mut().unwrap().launch();
-    env.pfn_swarm.as_mut().unwrap().launch();
+    let validator = validator_peer_ids[1];
+    let vfn = swarm
+        .add_validator_fullnode(
+            &version,
+            NodeConfig::default_for_validator_full_node(),
+            validator,
+        )
+        .await
+        .unwrap();
 
-    // set up clients
-    let mut vfn_0_client = env.get_vfn_client(0, None);
-    let mut vfn_1_client = env.get_vfn_client(1, None);
-    let mut pfn_0_client = env.get_pfn_client(0, None);
+    for validator in swarm.validators_mut() {
+        validator
+            .wait_until_healthy(Instant::now() + Duration::from_secs(10))
+            .await
+            .unwrap();
+    }
+    for fullnode in swarm.full_nodes_mut() {
+        fullnode
+            .wait_until_healthy(Instant::now() + Duration::from_secs(10))
+            .await
+            .unwrap();
+        fullnode
+            .wait_for_connectivity(Instant::now() + Duration::from_secs(60))
+            .await
+            .unwrap();
+    }
 
-    // some helpers for creation/minting
-    let sender_account = testnet_dd_account_address();
-    let creation_account = treasury_compliance_account_address();
-    let sequence_reset = format!("sequence {} true", sender_account);
-    let creation_sequence_reset = format!("sequence {} true", creation_account);
-    let sequence_reset_command: Vec<_> = sequence_reset.split(' ').collect();
-    let creation_sequence_reset_command: Vec<_> = creation_sequence_reset.split(' ').collect();
+    // Setup accounts
+    let mut account_0 = create_and_fund_account(&mut swarm, 100).await;
+    let account_1 = create_and_fund_account(&mut swarm, 100).await;
 
-    // Case 1:
+    swarm
+        .wait_for_all_nodes_to_catchup(Instant::now() + Duration::from_secs(10))
+        .await
+        .unwrap();
+
+    // set up client
+    let vfn_client = swarm.full_node(vfn).unwrap().rest_client();
+
     // submit client requests directly to VFN of dead V
-    env.validator_swarm.kill_node(0);
-    for _ in 0..2 {
-        vfn_0_client.create_next_account(false).unwrap();
-    }
-    vfn_0_client
-        .mint_coins(&["mb", "0", "100", "XUS"], true)
-        .unwrap();
-    vfn_0_client
-        .mint_coins(&["mb", "1", "50", "XUS"], true)
-        .unwrap();
+    swarm.validator_mut(validator).unwrap().stop();
+
+    transfer_coins(
+        &vfn_client,
+        &transaction_factory,
+        &mut account_0,
+        &account_1,
+        1,
+    )
+    .await;
+
     for _ in 0..8 {
-        vfn_0_client
-            .transfer_coins(&["t", "0", "1", "1", "XUS"], false)
+        transfer_coins_non_blocking(
+            &vfn_client,
+            &transaction_factory,
+            &mut account_0,
+            &account_1,
+            1,
+        )
+        .await;
+    }
+
+    transfer_coins(
+        &vfn_client,
+        &transaction_factory,
+        &mut account_0,
+        &account_1,
+        1,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_private_full_node() {
+    let mut swarm = new_local_swarm(4).await;
+    let transaction_factory = swarm.chain_info().transaction_factory();
+    let version = swarm.versions().max().unwrap();
+
+    // Here we want to add two swarms, a private full node, followed by a user full node connected to it
+    let mut private_config = NodeConfig::default_for_public_full_node();
+    let private_network = private_config.full_node_networks.first_mut().unwrap();
+    // Disallow public connections
+    private_network.max_inbound_connections = 0;
+    // Also, we only want it to purposely connect to 1 VFN
+    private_network.max_outbound_connections = 1;
+
+    let mut user_config = NodeConfig::default_for_public_full_node();
+    let user_network = user_config.full_node_networks.first_mut().unwrap();
+    // Disallow fallbacks to VFNs
+    user_network.max_outbound_connections = 1;
+    user_network.discovery_method = DiscoveryMethod::None;
+
+    // The secret sauce, add the user as a downstream to the seeds
+    add_node_to_seeds(
+        &mut private_config,
+        &user_config,
+        NetworkId::Public,
+        PeerRole::Downstream,
+    );
+
+    // Now we need to connect the VFNs to the private swarm
+    add_node_to_seeds(
+        &mut private_config,
+        swarm.validators().next().unwrap().config(),
+        NetworkId::Public,
+        PeerRole::PreferredUpstream,
+    );
+    let private = swarm.add_full_node(&version, private_config).unwrap();
+
+    // And connect the user to the private swarm
+    add_node_to_seeds(
+        &mut user_config,
+        swarm.full_node(private).unwrap().config(),
+        NetworkId::Public,
+        PeerRole::PreferredUpstream,
+    );
+    let user = swarm.add_full_node(&version, user_config).unwrap();
+
+    swarm
+        .wait_for_connectivity(Instant::now() + Duration::from_secs(60))
+        .await
+        .unwrap();
+
+    // Ensure that User node is connected to private node and only the private node
+    {
+        let user_node = swarm.full_node(user).unwrap();
+        assert_eq!(
+            1,
+            user_node
+                .get_connected_peers(NetworkId::Public, None)
+                .await
+                .unwrap()
+                .unwrap_or(0),
+            "User node is connected to more than one peer"
+        );
+    }
+
+    // read state from full node client
+    let validator_client = swarm.validators().next().unwrap().rest_client();
+    let user_client = swarm.full_node(user).unwrap().rest_client();
+
+    let mut account_0 = create_and_fund_account(&mut swarm, 100).await;
+    let account_1 = create_and_fund_account(&mut swarm, 10).await;
+
+    swarm
+        .wait_for_all_nodes_to_catchup(Instant::now() + Duration::from_secs(60))
+        .await
+        .unwrap();
+
+    // send txn from user node and check both validator and user node have correct balance
+    transfer_coins(
+        &user_client,
+        &transaction_factory,
+        &mut account_0,
+        &account_1,
+        10,
+    )
+    .await;
+    assert_balance(&user_client, &account_0, 90).await;
+    assert_balance(&user_client, &account_1, 20).await;
+    assert_balance(&validator_client, &account_0, 90).await;
+    assert_balance(&validator_client, &account_1, 20).await;
+}
+
+fn add_node_to_seeds(
+    dest_config: &mut NodeConfig,
+    seed_config: &NodeConfig,
+    network_id: NetworkId,
+    peer_role: PeerRole,
+) {
+    let dest_network_config = dest_config
+        .full_node_networks
+        .iter_mut()
+        .find(|network| network.network_id == network_id)
+        .unwrap();
+    let seed_network_config = seed_config
+        .full_node_networks
+        .iter()
+        .find(|network| network.network_id == network_id)
+        .unwrap();
+
+    let seed_peer_id = seed_network_config.peer_id();
+    let seed_key = seed_network_config.identity_key().public_key();
+
+    let seed_peer = if peer_role != PeerRole::Downstream {
+        // For upstreams, we know the address, but so don't duplicate the keys in the config (lazy way)
+        // TODO: This is ridiculous, we need a better way to manipulate these `NetworkAddress`s
+        let address = seed_network_config.listen_address.clone();
+        let port_protocol = address
+            .as_slice()
+            .iter()
+            .find(|protocol| matches!(protocol, Protocol::Tcp(_)))
             .unwrap();
-    }
-    vfn_0_client
-        .transfer_coins(&["tb", "0", "1", "1", "XUS"], true)
-        .unwrap();
+        let address = NetworkAddress::from(Protocol::Ip4(Ipv4Addr::new(127, 0, 0, 1)))
+            .push(port_protocol.clone())
+            .push(Protocol::NoiseIK(seed_key))
+            .push(Protocol::Handshake(HANDSHAKE_VERSION));
 
-    // wait for VFN 1 to catch up with creation and sender account
-    vfn_1_client
-        .wait_for_transaction(creation_account, 0)
-        .unwrap();
-    vfn_1_client
-        .wait_for_transaction(sender_account, 1)
-        .unwrap();
-    vfn_1_client
-        .get_sequence_number(&sequence_reset_command)
-        .unwrap();
-    vfn_1_client
-        .get_sequence_number(&creation_sequence_reset_command)
-        .unwrap();
-    for _ in 0..4 {
-        vfn_1_client.create_next_account(false).unwrap();
-    }
-    vfn_1_client
-        .mint_coins(&["mb", "2", "100", "XUS"], true)
-        .unwrap();
-    vfn_1_client
-        .mint_coins(&["mb", "3", "50", "XUS"], true)
-        .unwrap();
+        Peer::new(vec![address], HashSet::new(), peer_role)
+    } else {
+        // For downstreams, we don't know the address, but we know the keys
+        let mut seed_keys = HashSet::new();
+        seed_keys.insert(seed_key);
+        Peer::new(vec![], seed_keys, peer_role)
+    };
 
-    for _ in 0..6 {
-        pfn_0_client.create_next_account(false).unwrap();
-    }
-    // wait for PFN to catch up with creation and sender account
-    pfn_0_client
-        .wait_for_transaction(creation_account, 2)
-        .unwrap();
-    pfn_0_client
-        .wait_for_transaction(sender_account, 3)
-        .unwrap();
-    pfn_0_client
-        .get_sequence_number(&sequence_reset_command)
-        .unwrap();
-    pfn_0_client
-        .get_sequence_number(&creation_sequence_reset_command)
-        .unwrap();
-    pfn_0_client
-        .mint_coins(&["mb", "4", "100", "XUS"], true)
-        .unwrap();
-    pfn_0_client
-        .mint_coins(&["mb", "5", "50", "XUS"], true)
-        .unwrap();
-
-    // bring down another V
-    // Transition to unfortunate case where 2(>f) validators are down
-    // and submit some transactions
-    env.validator_swarm.kill_node(1);
-    // submit some non-blocking txns during this scenario when >f validators are down
-    for _ in 0..10 {
-        vfn_1_client
-            .transfer_coins(&["t", "2", "3", "1", "XUS"], false)
-            .unwrap();
-    }
-
-    // submit txn for vfn_0 too
-    for _ in 0..5 {
-        vfn_0_client
-            .transfer_coins(&["t", "0", "1", "1", "XUS"], false)
-            .unwrap();
-    }
-
-    // we don't know which exact VFNs each pfn client's PFN is connected to,
-    // but by pigeonhole principle, we know the PFN is connected to max 2 live VFNs
-    for _ in 0..7 {
-        pfn_0_client
-            .transfer_coins(&["t", "4", "5", "1", "XUS"], false)
-            .unwrap();
-    }
-
-    // bring back one of the validators so consensus can resume
-    assert!(env.validator_swarm.add_node(0).is_ok());
-    // check all txns submitted so far (even those submitted during overlapping validator downtime) are committed
-    let vfn_0_acct_0 = vfn_0_client.copy_all_accounts().get(0).unwrap().address;
-    vfn_0_client.wait_for_transaction(vfn_0_acct_0, 13).unwrap();
-    let vfn_1_acct_0 = vfn_1_client.copy_all_accounts().get(2).unwrap().address;
-    vfn_1_client.wait_for_transaction(vfn_1_acct_0, 9).unwrap();
-    let pfn_acct_0 = pfn_0_client.copy_all_accounts().get(4).unwrap().address;
-    pfn_0_client.wait_for_transaction(pfn_acct_0, 6).unwrap();
-
-    // submit txns to vfn of dead V
-    for _ in 0..5 {
-        vfn_1_client
-            .transfer_coins(&["t", "2", "3", "1", "XUS"], false)
-            .unwrap();
-    }
-    vfn_1_client
-        .transfer_coins(&["tb", "2", "3", "1", "XUS"], true)
-        .unwrap();
-
-    // bring back all Vs back up
-    assert!(env.validator_swarm.add_node(1).is_ok());
-
-    // just for kicks: check regular minting still works with revived validators
-    for _ in 0..5 {
-        pfn_0_client
-            .transfer_coins(&["t", "4", "5", "1", "XUS"], false)
-            .unwrap();
-    }
-    pfn_0_client
-        .transfer_coins(&["tb", "4", "5", "1", "XUS"], true)
-        .unwrap();
+    dest_network_config.seeds.insert(seed_peer_id, seed_peer);
 }

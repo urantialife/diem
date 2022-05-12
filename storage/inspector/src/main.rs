@@ -4,8 +4,8 @@
 #![forbid(unsafe_code)]
 
 use anyhow::Result;
-use compiled_stdlib::shim::tmp_new_transaction_scripts::name_for_script;
 use diem_config::config::RocksdbConfig;
+use diem_framework_releases::name_for_script;
 use diem_logger::info;
 use diemdb::DiemDB;
 use std::path::PathBuf;
@@ -172,6 +172,7 @@ fn main() {
         true, /* readonly */
         None, /* pruner */
         RocksdbConfig::default(),
+        true, /* account_count_migration, ignored anyway */
     )
     .expect("Unable to open DiemDB");
     info!("DB opened successfully.");

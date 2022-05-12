@@ -1,8 +1,8 @@
 ---
-id: cookies-policy
-title: Cookies Policy
+title: "Cookies Policy"
+slug: "cookies"
+hidden: false
 ---
-
 ## Cookies
  Our Data Policy explains our principles when it comes to the collection, processing, and storage of your information. This policy specifically explains how we, our partners, and users of our services deploy cookies, as well as the options you have to control them.
 

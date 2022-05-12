@@ -28,7 +28,6 @@ OverlayCard.propTypes = {
   icon: PropTypes.string.isRequired,
   iconDark: PropTypes.string,
   overlay: PropTypes.string,
-  overlay: PropTypes.string,
   title: PropTypes.string.isRequired,
   to: PropTypes.string,
 };

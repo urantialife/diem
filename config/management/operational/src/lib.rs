@@ -8,12 +8,13 @@ mod auto_validate;
 pub mod command;
 mod governance;
 pub mod json_rpc;
-mod keys;
+pub mod keys;
 mod owner;
 mod print;
 mod validate_transaction;
 mod validator_config;
 mod validator_set;
+mod validator_state;
 
 mod network_checker;
 #[cfg(any(test, feature = "testing"))]

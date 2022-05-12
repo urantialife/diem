@@ -21,6 +21,7 @@ a,
 p a {
   color: #39298C;
   transition: all 0.2s;
+  text-decoration: underline;
 }
 
 a:hover,

@@ -14,7 +14,7 @@ use diem_global_constants::{
     SAFETY_DATA, TREASURY_COMPLIANCE_KEY, VALIDATOR_NETWORK_KEY, WAYPOINT,
 };
 use diem_management::{error::Error, secure_backend::DISK};
-use diem_secure_storage::{CryptoStorage, KVStorage, NamespacedStorage, OnDiskStorage, Storage};
+use diem_secure_storage::{CryptoStorage, KVStorage, Namespaced, OnDiskStorage, Storage};
 use diem_types::{
     chain_id::ChainId,
     network_address::{self, NetworkAddress},
@@ -38,11 +38,7 @@ impl StorageHelper {
 
     pub fn storage(&self, namespace: String) -> Storage {
         let storage = OnDiskStorage::new(self.temppath.path().to_path_buf());
-        Storage::from(NamespacedStorage::new(Storage::from(storage), namespace))
-    }
-
-    pub fn path(&self) -> &Path {
-        self.temppath.path()
+        Storage::from(Namespaced::new(namespace, Box::new(Storage::from(storage))))
     }
 
     pub fn path_string(&self) -> &str {
@@ -91,7 +87,7 @@ impl StorageHelper {
 
         // Initialize all other data in storage
         storage
-            .set(SAFETY_DATA, SafetyData::new(0, 0, 0, None))
+            .set(SAFETY_DATA, SafetyData::new(0, 0, 0, 0, None))
             .unwrap();
         storage.set(WAYPOINT, Waypoint::default()).unwrap();
         let mut encryptor = diem_network_address_encryption::Encryptor::new(storage);
@@ -258,6 +254,26 @@ impl StorageHelper {
 
         let command = Command::from_iter(args.split_whitespace());
         command.set_layout()
+    }
+
+    #[cfg(test)]
+    pub fn set_move_modules(&self, dir: &str) -> Result<Vec<Vec<u8>>, Error> {
+        println!("setting move modules with dir {}", dir);
+        let args = format!(
+            "
+                diem-genesis-tool
+                set-move-modules
+                --dir {dir}
+                --shared-backend backend={backend};\
+                    path={storage_path}
+            ",
+            dir = dir,
+            backend = DISK,
+            storage_path = self.path_string(),
+        );
+
+        let command = Command::from_iter(args.split_whitespace());
+        command.set_move_modules()
     }
 
     pub fn set_operator(&self, operator_name: &str, shared_ns: &str) -> Result<String, Error> {

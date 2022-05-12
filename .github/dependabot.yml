@@ -14,7 +14,7 @@ updates:
       - dependency-name: "codespan*"
       - dependency-name: "libfuzzer-sys"
       - dependency-name: "bindgen"
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 0
 
   # Dockerfiles.
 
@@ -52,14 +52,6 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/docker/client"
-    schedule:
-      interval: "daily"
-    labels:
-      - "docker"
-      - "dependencies"
-
-  - package-ecosystem: "docker"
-    directory: "/docker/cluster-test"
     schedule:
       interval: "daily"
     labels:

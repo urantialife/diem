@@ -3,10 +3,14 @@
 
 use crate::config::Error;
 use diem_secure_storage::{
-    GitHubStorage, InMemoryStorage, NamespacedStorage, OnDiskStorage, Storage, VaultStorage,
+    GitHubStorage, InMemoryStorage, Namespaced, OnDiskStorage, Storage, VaultStorage,
 };
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
@@ -17,8 +21,31 @@ pub enum SecureBackend {
     OnDiskStorage(OnDiskStorageConfig),
 }
 
+impl SecureBackend {
+    pub fn namespace(&self) -> Option<&str> {
+        match self {
+            SecureBackend::GitHub(GitHubConfig { namespace, .. })
+            | SecureBackend::Vault(VaultConfig { namespace, .. })
+            | SecureBackend::OnDiskStorage(OnDiskStorageConfig { namespace, .. }) => {
+                namespace.as_deref()
+            }
+            SecureBackend::InMemoryStorage => None,
+        }
+    }
+
+    pub fn clear_namespace(&mut self) {
+        match self {
+            SecureBackend::GitHub(GitHubConfig { namespace, .. })
+            | SecureBackend::Vault(VaultConfig { namespace, .. })
+            | SecureBackend::OnDiskStorage(OnDiskStorageConfig { namespace, .. }) => {
+                *namespace = None;
+            }
+            SecureBackend::InMemoryStorage => {}
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct GitHubConfig {
     /// The owner or account that hosts a repository
     pub repository_owner: String,
@@ -35,7 +62,6 @@ pub struct GitHubConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct VaultConfig {
     /// Optional SSL Certificate for the vault host, this is expected to be a full path.
     pub ca_certificate: Option<PathBuf>,
@@ -70,7 +96,6 @@ impl VaultConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct OnDiskStorageConfig {
     // Required path for on disk storage
     pub path: PathBuf,
@@ -101,13 +126,11 @@ impl Token {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct TokenFromConfig {
     token: String,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct TokenFromDisk {
     path: PathBuf,
 }
@@ -136,7 +159,7 @@ impl OnDiskStorageConfig {
     }
 }
 
-fn read_file(path: &PathBuf) -> Result<String, Error> {
+fn read_file(path: &Path) -> Result<String, Error> {
     let mut file =
         File::open(path).map_err(|e| Error::IO(path.to_str().unwrap().to_string(), e))?;
     let mut contents = String::new();
@@ -160,7 +183,7 @@ impl From<&SecureBackend> for Storage {
                     config.token.read_token().expect("Unable to read token"),
                 ));
                 if let Some(namespace) = &config.namespace {
-                    Storage::from(NamespacedStorage::new(storage, namespace.clone()))
+                    Storage::from(Namespaced::new(namespace, Box::new(storage)))
                 } else {
                     storage
                 }
@@ -169,24 +192,30 @@ impl From<&SecureBackend> for Storage {
             SecureBackend::OnDiskStorage(config) => {
                 let storage = Storage::from(OnDiskStorage::new(config.path()));
                 if let Some(namespace) = &config.namespace {
-                    Storage::from(NamespacedStorage::new(storage, namespace.clone()))
+                    Storage::from(Namespaced::new(namespace, Box::new(storage)))
                 } else {
                     storage
                 }
             }
-            SecureBackend::Vault(config) => Storage::from(VaultStorage::new(
-                config.server.clone(),
-                config.token.read_token().expect("Unable to read token"),
-                config.namespace.clone(),
-                config
-                    .ca_certificate
-                    .as_ref()
-                    .map(|_| config.ca_certificate().unwrap()),
-                config.renew_ttl_secs,
-                config.disable_cas.map_or_else(|| true, |disable| !disable),
-                config.connection_timeout_ms,
-                config.response_timeout_ms,
-            )),
+            SecureBackend::Vault(config) => {
+                let storage = Storage::from(VaultStorage::new(
+                    config.server.clone(),
+                    config.token.read_token().expect("Unable to read token"),
+                    config
+                        .ca_certificate
+                        .as_ref()
+                        .map(|_| config.ca_certificate().unwrap()),
+                    config.renew_ttl_secs,
+                    config.disable_cas.map_or_else(|| true, |disable| !disable),
+                    config.connection_timeout_ms,
+                    config.response_timeout_ms,
+                ));
+                if let Some(namespace) = &config.namespace {
+                    Storage::from(Namespaced::new(namespace, Box::new(storage)))
+                } else {
+                    storage
+                }
+            }
         }
     }
 }

@@ -83,10 +83,6 @@ const getReference = (theme = 'secondary') => {
           icon: 'img/sdks.svg',
         }),
         referenceLink({
-          id: 'cli',
-          icon: 'img/cli.svg',
-        }),
-        referenceLink({
           id: 'github/overview',
           icon: 'img/github.svg',
         }),

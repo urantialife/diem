@@ -11,7 +11,21 @@ use diem_types::{
     vm_status::StatusCode,
 };
 use diem_vm::VMValidator;
-use std::convert::TryFrom;
+
+pub const ACCOUNT_DNE_TEST_ADD: AccountAddress =
+    AccountAddress::new([0_u8; AccountAddress::LENGTH]);
+pub const INVALID_SIG_TEST_ADD: AccountAddress =
+    AccountAddress::new([1_u8; AccountAddress::LENGTH]);
+pub const INSUFFICIENT_BALANCE_TEST_ADD: AccountAddress =
+    AccountAddress::new([2_u8; AccountAddress::LENGTH]);
+pub const SEQ_NUMBER_TOO_NEW_TEST_ADD: AccountAddress =
+    AccountAddress::new([3_u8; AccountAddress::LENGTH]);
+pub const SEQ_NUMBER_TOO_OLD_TEST_ADD: AccountAddress =
+    AccountAddress::new([4_u8; AccountAddress::LENGTH]);
+pub const TXN_EXPIRATION_TIME_TEST_ADD: AccountAddress =
+    AccountAddress::new([5_u8; AccountAddress::LENGTH]);
+pub const INVALID_AUTH_KEY_TEST_ADD: AccountAddress =
+    AccountAddress::new([6_u8; AccountAddress::LENGTH]);
 
 #[derive(Clone)]
 pub struct MockVMValidator;
@@ -20,7 +34,7 @@ impl VMValidator for MockVMValidator {
     fn validate_transaction(
         &self,
         _transaction: SignedTransaction,
-        _state_view: &dyn StateView,
+        _state_view: &impl StateView,
     ) -> VMValidatorResult {
         VMValidatorResult::new(None, 0, GovernanceRole::NonGovernanceRole)
     }
@@ -41,30 +55,19 @@ impl TransactionValidation for MockVMValidator {
         };
 
         let sender = txn.sender();
-        let account_dne_test_add = AccountAddress::try_from(&[0_u8; AccountAddress::LENGTH])?;
-        let invalid_sig_test_add = AccountAddress::try_from(&[1_u8; AccountAddress::LENGTH])?;
-        let insufficient_balance_test_add =
-            AccountAddress::try_from(&[2_u8; AccountAddress::LENGTH])?;
-        let seq_number_too_new_test_add =
-            AccountAddress::try_from(&[3_u8; AccountAddress::LENGTH])?;
-        let seq_number_too_old_test_add =
-            AccountAddress::try_from(&[4_u8; AccountAddress::LENGTH])?;
-        let txn_expiration_time_test_add =
-            AccountAddress::try_from(&[5_u8; AccountAddress::LENGTH])?;
-        let invalid_auth_key_test_add = AccountAddress::try_from(&[6_u8; AccountAddress::LENGTH])?;
-        let ret = if sender == account_dne_test_add {
+        let ret = if sender == ACCOUNT_DNE_TEST_ADD {
             Some(StatusCode::SENDING_ACCOUNT_DOES_NOT_EXIST)
-        } else if sender == invalid_sig_test_add {
+        } else if sender == INVALID_SIG_TEST_ADD {
             Some(StatusCode::INVALID_SIGNATURE)
-        } else if sender == insufficient_balance_test_add {
+        } else if sender == INSUFFICIENT_BALANCE_TEST_ADD {
             Some(StatusCode::INSUFFICIENT_BALANCE_FOR_TRANSACTION_FEE)
-        } else if sender == seq_number_too_new_test_add {
+        } else if sender == SEQ_NUMBER_TOO_NEW_TEST_ADD {
             Some(StatusCode::SEQUENCE_NUMBER_TOO_NEW)
-        } else if sender == seq_number_too_old_test_add {
+        } else if sender == SEQ_NUMBER_TOO_OLD_TEST_ADD {
             Some(StatusCode::SEQUENCE_NUMBER_TOO_OLD)
-        } else if sender == txn_expiration_time_test_add {
+        } else if sender == TXN_EXPIRATION_TIME_TEST_ADD {
             Some(StatusCode::TRANSACTION_EXPIRED)
-        } else if sender == invalid_auth_key_test_add {
+        } else if sender == INVALID_AUTH_KEY_TEST_ADD {
             Some(StatusCode::INVALID_AUTH_KEY)
         } else {
             None
@@ -79,4 +82,6 @@ impl TransactionValidation for MockVMValidator {
     fn restart(&mut self, _config: OnChainConfigPayload) -> Result<()> {
         unimplemented!();
     }
+
+    fn notify_commit(&mut self) {}
 }

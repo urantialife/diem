@@ -1,9 +1,9 @@
 ---
-id: privacy-policy
-title: Privacy Policy
+title: "Privacy Policy"
+slug: "privacy-policy"
+hidden: false
 ---
-
- This website is owned and operated by the Diem Association (“Diem,” “us,” “our”). This Data Policy applies to the Diem Association website (“Website”). This Data Policy describes our practices for handling your information collected in connection with this Website.
+This website is owned and operated by the Diem Association (“Diem,” “us,” “our”). This Data Policy applies to the Diem Association website (“Website”). This Data Policy describes our practices for handling your information collected in connection with this Website.
 
 ## Collection of Information
  When you interact with us through our Website, we may collect or receive the following of information:

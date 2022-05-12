@@ -5,7 +5,8 @@ use crate::{
     access_path::AccessPath,
     account_address::{self, AccountAddress},
     account_config::{
-        AccountResource, BalanceResource, KeyRotationCapabilityResource, WithdrawCapabilityResource,
+        AccountResource, BalanceResource, DiemAccountResource, KeyRotationCapabilityResource,
+        WithdrawCapabilityResource,
     },
     account_state_blob::AccountStateBlob,
     block_info::{BlockInfo, Round},
@@ -16,11 +17,12 @@ use crate::{
     event::{EventHandle, EventKey},
     ledger_info::{LedgerInfo, LedgerInfoWithSignatures},
     on_chain_config::ValidatorSet,
-    proof::TransactionListProof,
+    proof::TransactionInfoListWithProof,
     transaction::{
-        ChangeSet, Module, RawTransaction, Script, SignatureCheckedTransaction, SignedTransaction,
-        Transaction, TransactionArgument, TransactionListWithProof, TransactionPayload,
-        TransactionStatus, TransactionToCommit, Version, WriteSetPayload,
+        ChangeSet, Module, ModuleBundle, RawTransaction, Script, SignatureCheckedTransaction,
+        SignedTransaction, Transaction, TransactionArgument, TransactionInfo,
+        TransactionListWithProof, TransactionPayload, TransactionStatus, TransactionToCommit,
+        Version, WriteSetPayload,
     },
     validator_info::ValidatorInfo,
     validator_signer::ValidatorSigner,
@@ -325,7 +327,7 @@ fn new_raw_transaction(
 ) -> RawTransaction {
     let chain_id = ChainId::test();
     match payload {
-        TransactionPayload::Module(module) => RawTransaction::new_module(
+        TransactionPayload::ModuleBundle(module) => RawTransaction::new_module_bundle(
             sender,
             sequence_number,
             module,
@@ -339,6 +341,16 @@ fn new_raw_transaction(
             sender,
             sequence_number,
             script,
+            max_gas_amount,
+            gas_unit_price,
+            gas_currency_code,
+            expiration_time_secs,
+            chain_id,
+        ),
+        TransactionPayload::ScriptFunction(script_fn) => RawTransaction::new_script_function(
+            sender,
+            sequence_number,
+            script_fn,
             max_gas_amount,
             gas_unit_price,
             gas_currency_code,
@@ -510,7 +522,8 @@ impl TransactionPayload {
     }
 
     pub fn module_strategy() -> impl Strategy<Value = Self> {
-        any::<Module>().prop_map(TransactionPayload::Module)
+        any::<Module>()
+            .prop_map(|module| TransactionPayload::ModuleBundle(ModuleBundle::from(module)))
     }
 
     pub fn write_set_strategy() -> impl Strategy<Value = Self> {
@@ -653,10 +666,32 @@ impl ContractEventGen {
 }
 
 #[derive(Arbitrary, Debug)]
-pub struct AccountResourceGen {
+pub struct DiemAccountResourceGen {
     withdrawal_capability: Option<WithdrawCapabilityResource>,
     key_rotation_capability: Option<KeyRotationCapabilityResource>,
 }
+
+impl DiemAccountResourceGen {
+    pub fn materialize(
+        self,
+        account_index: Index,
+        universe: &AccountInfoUniverse,
+    ) -> DiemAccountResource {
+        let account_info = universe.get_account_info(account_index);
+
+        DiemAccountResource::new(
+            account_info.sequence_number,
+            account_info.public_key.to_bytes().to_vec(),
+            self.withdrawal_capability,
+            self.key_rotation_capability,
+            account_info.sent_event_handle.clone(),
+            account_info.received_event_handle.clone(),
+        )
+    }
+}
+
+#[derive(Arbitrary, Debug)]
+pub struct AccountResourceGen;
 
 impl AccountResourceGen {
     pub fn materialize(
@@ -665,14 +700,10 @@ impl AccountResourceGen {
         universe: &AccountInfoUniverse,
     ) -> AccountResource {
         let account_info = universe.get_account_info(account_index);
-
         AccountResource::new(
             account_info.sequence_number,
             account_info.public_key.to_bytes().to_vec(),
-            self.withdrawal_capability,
-            self.key_rotation_capability,
-            account_info.sent_event_handle.clone(),
-            account_info.received_event_handle.clone(),
+            account_info.address,
         )
     }
 }
@@ -690,8 +721,9 @@ impl BalanceResourceGen {
 
 #[derive(Arbitrary, Debug)]
 pub struct AccountStateBlobGen {
-    account_resource_gen: AccountResourceGen,
+    diem_account_resource_gen: DiemAccountResourceGen,
     balance_resource_gen: BalanceResourceGen,
+    account_resource_gen: AccountResourceGen,
 }
 
 impl AccountStateBlobGen {
@@ -700,11 +732,15 @@ impl AccountStateBlobGen {
         account_index: Index,
         universe: &AccountInfoUniverse,
     ) -> AccountStateBlob {
+        let diem_account_resource = self
+            .diem_account_resource_gen
+            .materialize(account_index, universe);
         let account_resource = self
             .account_resource_gen
             .materialize(account_index, universe);
         let balance_resource = self.balance_resource_gen.materialize();
-        AccountStateBlob::try_from((&account_resource, &balance_resource)).unwrap()
+        AccountStateBlob::try_from((&account_resource, &diem_account_resource, &balance_resource))
+            .unwrap()
     }
 }
 
@@ -782,6 +818,8 @@ pub struct TransactionToCommitGen {
     /// N.B. the transaction sender and event owners must be updated to reflect information such as
     /// sequence numbers so that test data generated through this is more realistic and logical.
     account_state_gens: Vec<(Index, AccountStateBlobGen)>,
+    /// Write set
+    write_set: WriteSet,
     /// Gas used.
     gas_used: u64,
     /// Transaction status
@@ -814,10 +852,11 @@ impl TransactionToCommitGen {
 
         TransactionToCommit::new(
             Transaction::UserTransaction(transaction),
+            TransactionInfo::new_placeholder(self.gas_used, self.status),
             account_states,
+            None,
+            self.write_set,
             events,
-            self.gas_used,
-            self.status,
         )
     }
 }
@@ -841,11 +880,12 @@ impl Arbitrary for TransactionToCommitGen {
                 0..=2,
             ),
             vec((any::<Index>(), any::<AccountStateBlobGen>()), 0..=1),
+            any::<WriteSet>(),
             any::<u64>(),
             any::<KeptVMStatus>(),
         )
             .prop_map(
-                |(sender, event_emitters, mut touched_accounts, gas_used, status)| {
+                |(sender, event_emitters, mut touched_accounts, write_set, gas_used, status)| {
                     // To reflect change of account/event sequence numbers, txn sender account and
                     // event emitter accounts must be updated.
                     let (sender_index, sender_blob_gen, txn_gen) = sender;
@@ -861,6 +901,7 @@ impl Arbitrary for TransactionToCommitGen {
                         transaction_gen: (sender_index, txn_gen),
                         event_gens,
                         account_state_gens: touched_accounts,
+                        write_set,
                         gas_used,
                         status,
                     }
@@ -881,7 +922,7 @@ fn arb_transaction_list_with_proof() -> impl Strategy<Value = TransactionListWit
             ),
             0..10,
         ),
-        any::<TransactionListProof>(),
+        any::<TransactionInfoListWithProof>(),
     )
         .prop_flat_map(|(transaction_and_events, proof)| {
             let transactions: Vec<_> = transaction_and_events
@@ -1056,6 +1097,51 @@ impl LedgerInfoGen {
             self.commit_info_gen.materialize(universe, block_size),
             self.consensus_data_hash,
         )
+    }
+}
+
+#[derive(Debug)]
+pub struct BlockGen {
+    txn_gens: Vec<TransactionToCommitGen>,
+    ledger_info_gen: LedgerInfoGen,
+}
+
+impl Arbitrary for BlockGen {
+    type Parameters = usize;
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(max_user_txns: Self::Parameters) -> Self::Strategy {
+        assert!(max_user_txns >= 1);
+        (
+            vec(any::<TransactionToCommitGen>(), 1..=max_user_txns),
+            any::<LedgerInfoGen>(),
+        )
+            .prop_map(|(txn_gens, ledger_info_gen)| Self {
+                txn_gens,
+                ledger_info_gen,
+            })
+            .boxed()
+    }
+}
+
+impl BlockGen {
+    pub fn materialize(
+        self,
+        universe: &mut AccountInfoUniverse,
+    ) -> (Vec<TransactionToCommit>, LedgerInfo) {
+        let mut txns_to_commit = Vec::new();
+
+        // materialize user transactions
+        for txn_gen in self.txn_gens {
+            txns_to_commit.push(txn_gen.materialize(universe));
+        }
+
+        // materialize ledger info
+        let ledger_info = self
+            .ledger_info_gen
+            .materialize(universe, txns_to_commit.len());
+
+        (txns_to_commit, ledger_info)
     }
 }
 

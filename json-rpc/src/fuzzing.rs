@@ -3,6 +3,7 @@
 
 use crate::{methods, runtime, tests};
 use diem_config::config;
+use diem_mempool::MempoolClientRequest;
 use diem_proptest_helpers::ValueGenerator;
 use diem_types::account_state_blob::AccountStateWithProof;
 use futures::{channel::mpsc::channel, StreamExt};
@@ -27,32 +28,58 @@ fn test_json_rpc_service_fuzzer() {
 #[test]
 fn test_method_fuzzer() {
     method_fuzzer(&gen_request_params!([]), "get_metadata");
+    method_fuzzer(&gen_request_params!([0]), "get_metadata");
     method_fuzzer(
         &gen_request_params!(["000000000000000000000000000000dd"]),
         "get_account",
     );
+    method_fuzzer(&gen_request_params!([0, 1, true]), "get_transactions");
     method_fuzzer(
         &gen_request_params!(["000000000000000000000000000000dd", 0, true]),
         "get_account_transaction",
     );
-    // todo: fix fuzzing test data to make the following test pass
-    // method_fuzzer(
-    //     &gen_request_params!([ADDRESS, 0, 1, true]),
-    //     "get_account_transactions",
-    // );
-    method_fuzzer(&gen_request_params!([0, 1, true]), "get_transactions");
+    method_fuzzer(
+        &gen_request_params!(["000000000000000000000000000000dd", 0, 1, true]),
+        "get_account_transactions",
+    );
     method_fuzzer(
         &gen_request_params!(["00000000000000000000000000000000000000000a550c18", 0, 10]),
         "get_events",
     );
-    method_fuzzer(&gen_request_params!([0]), "get_metadata");
     method_fuzzer(&gen_request_params!([]), "get_currencies");
+    method_fuzzer(&gen_request_params!([]), "get_network_status");
+    // TODO(philiphayes): fails because generated AccountStateWithProof doesn't
+    // include a DiemAccount resource and the non-fuzzer tests assert that the
+    // response is Ok. Should still work fine inside the fuzzer.
+    // method_fuzzer(
+    //     &gen_request_params!(["000000000000000000000000000000dd"]),
+    //     "get_resources",
+    // );
     method_fuzzer(&gen_request_params!([1]), "get_state_proof");
+    method_fuzzer(
+        &gen_request_params!([]),
+        "get_accumulator_consistency_proof",
+    );
     method_fuzzer(
         &gen_request_params!(["000000000000000000000000000000dd", 0, 1]),
         "get_account_state_with_proof",
     );
-    method_fuzzer(&gen_request_params!([]), "get_network_status");
+    method_fuzzer(
+        &gen_request_params!([0, 1, true]),
+        "get_transactions_with_proofs",
+    );
+    method_fuzzer(
+        &gen_request_params!(["000000000000000000000000000000dd", 0, 1, true]),
+        "get_account_transactions_with_proofs",
+    );
+    method_fuzzer(
+        &gen_request_params!(["00000000000000000000000000000000000000000a550c18", 0, 1]),
+        "get_events_with_proofs",
+    );
+    method_fuzzer(
+        &gen_request_params!(["00000000000000000000000000000000000000000a550c18", 0]),
+        "get_event_by_version_with_proof",
+    );
 }
 
 pub fn method_fuzzer(params_data: &[u8], method: &str) {
@@ -104,7 +131,7 @@ pub fn request_fuzzer(json_request: serde_json::Value) {
     let mut gen = ValueGenerator::new();
     let account_state_with_proof = gen.generate(proptest::prelude::any::<AccountStateWithProof>());
 
-    let db = tests::MockDiemDB {
+    let db = tests::utils::MockDiemDB {
         version: 1,
         genesis: std::collections::HashMap::new(),
         all_accounts: std::collections::HashMap::new(),
@@ -113,7 +140,6 @@ pub fn request_fuzzer(json_request: serde_json::Value) {
         account_state_with_proof: vec![account_state_with_proof],
         timestamps: vec![1598223353000000],
     };
-    let registry = Arc::new(methods::build_registry());
     let service = methods::JsonRpcService::new(
         Arc::new(db),
         mp_sender,
@@ -128,7 +154,7 @@ pub fn request_fuzzer(json_request: serde_json::Value) {
         .unwrap();
 
     rt.spawn(async move {
-        if let Some((_, cb)) = mp_events.next().await {
+        if let Some(MempoolClientRequest::SubmitTransaction(_, cb)) = mp_events.next().await {
             cb.send(Ok((
                 diem_types::mempool_status::MempoolStatus::new(
                     diem_types::mempool_status::MempoolStatusCode::Accepted,
@@ -139,7 +165,7 @@ pub fn request_fuzzer(json_request: serde_json::Value) {
         }
     });
     let body = rt.block_on(async {
-        let reply = runtime::rpc_endpoint(json_request, service, registry)
+        let reply = runtime::rpc_endpoint(json_request, service, None)
             .await
             .unwrap();
 

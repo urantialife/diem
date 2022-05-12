@@ -16,3 +16,4 @@ Thank you to the people who contributed to and improved this website:
 - Sam Blackshear
 - Tim Zakian
 - Ville Sundell
+- Max Kaplan (CapCap)

@@ -35,6 +35,8 @@ pub enum SingleEntryKey {
     HighestTimeoutCertificate = 0,
     // Used to store the last vote
     LastVoteMsg = 1,
+    // Two chain timeout cert
+    Highest2ChainTimeoutCert = 2,
 }
 
 impl KeyCodec<SingleEntrySchema> for SingleEntryKey {
@@ -44,9 +46,9 @@ impl KeyCodec<SingleEntrySchema> for SingleEntryKey {
             .ok_or_else(|| format_err!("ToPrimitive failed."))?])
     }
 
-    fn decode_key(data: &[u8]) -> Result<Self> {
+    fn decode_key(mut data: &[u8]) -> Result<Self> {
         ensure_slice_len_eq(data, size_of::<u8>())?;
-        let key = (&data[..]).read_u8()?;
+        let key = data.read_u8()?;
         SingleEntryKey::from_u8(key).ok_or_else(|| format_err!("FromPrimitive failed."))
     }
 }
