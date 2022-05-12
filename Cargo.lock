@@ -521,7 +521,7 @@ dependencies = [
  "ed25519-dalek-fiat",
  "sha2",
  "sha3",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -3604,9 +3604,9 @@ dependencies = [
 
 [[package]]
 name = "hakari"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed0e0360cf1f4a59ec6837c0466532d5307194ebad2d088d44470cae16893d23"
+checksum = "f48905a7968260802691e8b6cc2e9426822b79eaf9164d07f2212e9327181b3e"
 dependencies = [
  "atomicwrites",
  "bimap",
@@ -3615,6 +3615,7 @@ dependencies = [
  "debug-ignore",
  "diffy",
  "guppy",
+ "guppy-workspace-hack",
  "include_dir",
  "indenter",
  "itertools 0.10.1",
@@ -3627,7 +3628,6 @@ dependencies = [
  "toml",
  "toml_edit",
  "twox-hash",
- "workspace-hack 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -4489,7 +4489,7 @@ dependencies = [
  "move-core-types",
  "move-model",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4506,7 +4506,7 @@ dependencies = [
  "ref-cast",
  "serde 1.0.130",
  "variant_count",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4515,7 +4515,7 @@ version = "0.0.1"
 source = "git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860#98ed299a7e3a9223019c9bdf4dd92fea9faef860"
 dependencies = [
  "mirai-annotations",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4532,7 +4532,7 @@ dependencies = [
  "move-ir-types",
  "move-symbol-pool",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4544,7 +4544,7 @@ dependencies = [
  "move-binary-format",
  "move-core-types",
  "petgraph 0.5.1",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4558,7 +4558,7 @@ dependencies = [
  "move-borrow-graph",
  "move-core-types",
  "petgraph 0.5.1",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4576,7 +4576,7 @@ dependencies = [
  "structopt",
  "termion",
  "tui",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4619,7 +4619,7 @@ dependencies = [
  "structopt",
  "tempfile",
  "walkdir",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4633,7 +4633,7 @@ dependencies = [
  "serde 1.0.130",
  "sha2",
  "walkdir",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4661,7 +4661,7 @@ dependencies = [
  "structopt",
  "tempfile",
  "walkdir",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4680,7 +4680,7 @@ dependencies = [
  "ref-cast",
  "serde 1.0.130",
  "serde_bytes",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4702,7 +4702,7 @@ dependencies = [
  "petgraph 0.5.1",
  "serde 1.0.130",
  "structopt",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4721,7 +4721,7 @@ dependencies = [
  "move-coverage",
  "move-ir-types",
  "structopt",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4741,7 +4741,7 @@ dependencies = [
  "once_cell",
  "regex",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4756,7 +4756,7 @@ dependencies = [
  "move-core-types",
  "move-model",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4776,7 +4776,7 @@ dependencies = [
  "move-symbol-pool",
  "serde_json",
  "structopt",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4796,7 +4796,7 @@ dependencies = [
  "move-symbol-pool",
  "ouroboros",
  "thiserror",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4810,7 +4810,7 @@ dependencies = [
  "move-core-types",
  "move-ir-types",
  "move-symbol-pool",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4825,7 +4825,7 @@ dependencies = [
  "move-symbol-pool",
  "once_cell",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4852,7 +4852,7 @@ dependencies = [
  "once_cell",
  "regex",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4884,7 +4884,7 @@ dependencies = [
  "tempfile",
  "toml",
  "walkdir",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4923,7 +4923,7 @@ dependencies = [
  "simplelog",
  "tokio",
  "toml",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4952,7 +4952,7 @@ dependencies = [
  "serde_json",
  "tera",
  "tokio",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4964,7 +4964,7 @@ dependencies = [
  "move-binary-format",
  "move-core-types",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -4980,7 +4980,7 @@ dependencies = [
  "move-vm-types",
  "once_cell",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5007,7 +5007,7 @@ dependencies = [
  "petgraph 0.5.1",
  "serde 1.0.130",
  "serde_json",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5027,7 +5027,7 @@ dependencies = [
  "num",
  "serde 1.0.130",
  "structopt",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5049,7 +5049,7 @@ dependencies = [
  "sha3",
  "smallvec",
  "walkdir",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5059,7 +5059,7 @@ source = "git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9
 dependencies = [
  "once_cell",
  "serde 1.0.130",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5091,7 +5091,7 @@ dependencies = [
  "regex",
  "structopt",
  "tempfile",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5116,7 +5116,7 @@ dependencies = [
  "rayon",
  "regex",
  "structopt",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5134,7 +5134,7 @@ dependencies = [
  "parking_lot",
  "sha3",
  "tracing",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5146,7 +5146,7 @@ dependencies = [
  "move-binary-format",
  "move-core-types",
  "move-vm-runtime",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -5163,7 +5163,7 @@ dependencies = [
  "serde 1.0.130",
  "sha2",
  "smallvec",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -6288,7 +6288,7 @@ dependencies = [
  "move-resource-viewer",
  "move-stackless-bytecode",
  "read-write-set-dynamic",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -6301,7 +6301,7 @@ dependencies = [
  "move-bytecode-utils",
  "move-core-types",
  "move-read-write-set-types",
- "workspace-hack 0.1.0 (git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9faef860)",
+ "workspace-hack",
 ]
 
 [[package]]
@@ -8876,12 +8876,6 @@ checksum = "0120db82e8a1e0b9fb3345a539c478767c0048d842860994d96113d5b667bd69"
 dependencies = [
  "winapi 0.3.9",
 ]
-
-[[package]]
-name = "workspace-hack"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beffa227304dbaea3ad6a06ac674f9bc83a3dec3b7f63eeb442de37e7cb6bb01"
 
 [[package]]
 name = "workspace-hack"
