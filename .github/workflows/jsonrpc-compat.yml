@@ -11,18 +11,18 @@ jobs:
     name: Warn PR author about compatibility requirements
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: comment
-        uses: diem/actions/comment@faa14430e68d54a269628f385e69a207e4e413d5
+        uses: diem/actions/comment@a5fa31ff2b54a544cd88ac912cda469742592e6c
         with:
           comment: |
             **This PR may have modified JSON-RPC server code.**
 
             Breaking changes policy:
 
-            1. Chaning JSON-RPC method signatures or removing/modifying fields
+            1. Changing JSON-RPC method signatures or removing/modifying fields
                in the response in /V1 will not be accepted.
             2. Adding fields is ok.
             3. Adding a new JSON-RPC method is ok.
