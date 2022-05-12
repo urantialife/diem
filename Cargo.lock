@@ -3692,12 +3692,18 @@ dependencies = [
 
 [[package]]
 name = "heck"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cbf45460356b7deeb5e3415b5563308c0a9b057c85e12b06ad551f98d0a6ac"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
 dependencies = [
  "unicode-segmentation",
 ]
+
+[[package]]
+name = "heck"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
 
 [[package]]
 name = "hermit-abi"
@@ -4482,7 +4488,7 @@ source = "git+https://github.com/diem/move?rev=98ed299a7e3a9223019c9bdf4dd92fea9
 dependencies = [
  "anyhow",
  "bcs",
- "heck",
+ "heck 0.3.3",
  "log",
  "move-bytecode-verifier",
  "move-command-line-common",
@@ -6871,7 +6877,7 @@ checksum = "b5cf21ac6679c60495e22ed041e2c913740f0332597c6a64bbcba04dbcb39249"
 dependencies = [
  "bcs",
  "bincode",
- "heck",
+ "heck 0.3.3",
  "include_dir",
  "maplit",
  "serde 1.0.130",
@@ -7688,7 +7694,7 @@ version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
 dependencies = [
- "heck",
+ "heck 0.3.3",
  "proc-macro-error",
  "proc-macro2 1.0.28",
  "quote 1.0.9",
@@ -8259,7 +8265,7 @@ dependencies = [
  "bcs",
  "diem-types",
  "diem-workspace-hack",
- "heck",
+ "heck 0.4.0",
  "move-core-types",
  "regex",
  "serde-generate",
