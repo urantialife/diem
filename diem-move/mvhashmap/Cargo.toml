@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 once_cell = "1.7.2"
-rayon = "1.5.0"
+rayon = "1.5.3"
 num_cpus = "1.13.0"
 diem-workspace-hack = { path = "../../crates/diem-workspace-hack" }
 crossbeam = "0.8"
