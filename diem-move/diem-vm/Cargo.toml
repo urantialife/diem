@@ -32,7 +32,7 @@ move-bytecode-utils = { git = "https://github.com/diem/move", rev = "98ed299a7e3
 move-stdlib = { git = "https://github.com/diem/move", rev = "98ed299a7e3a9223019c9bdf4dd92fea9faef860" }
 diem-framework = { path = "../../diem-move/diem-framework" }
 serde_json = "1.0.64"
-serde = { version = "1.0.124", default-features = false }
+serde = { version = "1.0.138", default-features = false }
 read-write-set-dynamic = { git = "https://github.com/diem/move", rev = "98ed299a7e3a9223019c9bdf4dd92fea9faef860"}
 
 mvhashmap = { path = "../mvhashmap" }
