@@ -16,7 +16,7 @@ hex = "0.4.3"
 hmac = "0.10.1"
 byteorder = "1.4.3"
 pbkdf2 = "0.7.3"
-serde = "1.0.124"
+serde = "1.0.141"
 sha2 = "0.9.3"
 thiserror = "1.0.24"
 diem-crypto = { path = "../diem-crypto", features = ["fuzzing"] }
