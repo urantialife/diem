@@ -25,7 +25,7 @@ diem-temppath = { path = "../../crates/diem-temppath" }
 diem-types = { path = "../../types" }
 diem-vm = { path = "../../diem-move/diem-vm" }
 diem-workspace-hack = { version = "0.1", path = "../../crates/diem-workspace-hack" }
-serde = { version = "1.0.124", default-features = false }
+serde = { version = "1.0.142", default-features = false }
 storage-client = { path = "../../storage/storage-client" }
 storage-interface = { path = "../../storage/storage-interface" }
 thiserror = "1.0.24"
