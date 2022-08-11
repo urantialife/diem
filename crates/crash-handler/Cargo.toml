@@ -15,4 +15,4 @@ toml = "0.5.8"
 
 diem-logger = { path = "../../crates/diem-logger" }
 diem-workspace-hack = { version = "0.1", path = "../diem-workspace-hack" }
-serde = { version = "1.0.124", features = ["derive"] }
+serde = { version = "1.0.143", features = ["derive"] }

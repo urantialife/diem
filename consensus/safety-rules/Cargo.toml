@@ -27,7 +27,7 @@ diem-temppath = { path = "../../crates/diem-temppath" }
 diem-types = { path = "../../types" }
 diem-vault-client = { path = "../../secure/storage/vault" }
 diem-workspace-hack = { version = "0.1", path = "../../crates/diem-workspace-hack" }
-serde = { version = "1.0.124", default-features = false }
+serde = { version = "1.0.143", default-features = false }
 serde_json = "1.0.64"
 thiserror = "1.0.24"
 
