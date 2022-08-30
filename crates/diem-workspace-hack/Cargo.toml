@@ -25,7 +25,7 @@ crossbeam-queue = { version = "0.3.1", features = ["alloc", "std"] }
 crossbeam-utils = { version = "0.8.3", features = ["lazy_static", "std"] }
 either = { version = "1.6.1", features = ["use_std"] }
 futures = { version = "0.3.12", features = ["alloc", "async-await", "executor", "futures-executor", "std"] }
-futures-channel = { version = "0.3.16", features = ["alloc", "futures-sink", "sink", "std"] }
+futures-channel = { version = "0.3.24", features = ["alloc", "futures-sink", "sink", "std"] }
 futures-core = { version = "0.3.16", features = ["alloc", "std"] }
 futures-io = { version = "0.3.16", features = ["std"] }
 futures-sink = { version = "0.3.16", features = ["alloc", "std"] }
@@ -73,7 +73,7 @@ crossbeam-queue = { version = "0.3.1", features = ["alloc", "std"] }
 crossbeam-utils = { version = "0.8.3", features = ["lazy_static", "std"] }
 either = { version = "1.6.1", features = ["use_std"] }
 futures = { version = "0.3.12", features = ["alloc", "async-await", "executor", "futures-executor", "std"] }
-futures-channel = { version = "0.3.16", features = ["alloc", "futures-sink", "sink", "std"] }
+futures-channel = { version = "0.3.24", features = ["alloc", "futures-sink", "sink", "std"] }
 futures-core = { version = "0.3.16", features = ["alloc", "std"] }
 futures-io = { version = "0.3.16", features = ["std"] }
 futures-sink = { version = "0.3.16", features = ["alloc", "std"] }
