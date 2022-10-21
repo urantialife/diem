@@ -44,7 +44,7 @@ regex = { version = "1.4.3", features = ["aho-corasick", "memchr", "perf", "perf
 regex-automata = { version = "0.1.9", features = ["regex-syntax", "std"] }
 reqwest = { version = "0.11.2", features = ["__tls", "blocking", "default-tls", "hyper-tls", "json", "native-tls-crate", "serde_json", "stream", "tokio-native-tls"] }
 rusty-fork = { version = "0.3.0", features = ["timeout", "wait-timeout"] }
-serde = { version = "1.0.130", features = ["alloc", "derive", "rc", "serde_derive", "std"] }
+serde = { version = "1.0.147", features = ["alloc", "derive", "rc", "serde_derive", "std"] }
 serde_json = { version = "1.0.73", features = ["indexmap", "preserve_order", "std"] }
 standback = { version = "0.2.15", default-features = false, features = ["std"] }
 subtle = { version = "2.4.0", default-features = false, features = ["std"] }
@@ -92,7 +92,7 @@ regex = { version = "1.4.3", features = ["aho-corasick", "memchr", "perf", "perf
 regex-automata = { version = "0.1.9", features = ["regex-syntax", "std"] }
 reqwest = { version = "0.11.2", features = ["__tls", "blocking", "default-tls", "hyper-tls", "json", "native-tls-crate", "serde_json", "stream", "tokio-native-tls"] }
 rusty-fork = { version = "0.3.0", features = ["timeout", "wait-timeout"] }
-serde = { version = "1.0.130", features = ["alloc", "derive", "rc", "serde_derive", "std"] }
+serde = { version = "1.0.147", features = ["alloc", "derive", "rc", "serde_derive", "std"] }
 serde_json = { version = "1.0.73", features = ["indexmap", "preserve_order", "std"] }
 standback = { version = "0.2.15", default-features = false, features = ["std"] }
 subtle = { version = "2.4.0", default-features = false, features = ["std"] }
